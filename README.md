@@ -36,8 +36,8 @@ Installable as a PWA on mobile and desktop.
 docker compose up
 ```
 
-Frontend: http://localhost:5173  
-Backend API: http://localhost:8000/docs
+Frontend: http://localhost:5174  
+Backend API: http://localhost:8001/docs
 
 ---
 
