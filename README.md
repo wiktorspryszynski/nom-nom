@@ -1,6 +1,6 @@
 # NomNom
 
-Meal planning and diet/exercise tracking app for 2 users.<br>
+Meal planning and diet/exercise tracking app.<br>
 Installable as a PWA on mobile and desktop.
 
 **Domain:** [fit.spryszynski.pl](https://fit.spryszynski.pl)
