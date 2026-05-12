@@ -3,7 +3,7 @@
 Meal planning and diet/exercise tracking app for 2 users.<br>
 Installable as a PWA on mobile and desktop.
 
-**Domain:** `fit.spryszynski.pl`
+**Domain:** [fit.spryszynski.pl](fit.spryszynski.pl)
 
 ---
 
