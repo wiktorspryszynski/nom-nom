@@ -5,6 +5,9 @@ Installable as a PWA on mobile and desktop.
 
 **Domain:** [fit.spryszynski.pl](https://fit.spryszynski.pl)
 
+> [!NOTE]
+> This is a work-in-progress
+
 ---
 
 ## What it does
