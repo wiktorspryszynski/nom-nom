@@ -11,7 +11,7 @@
 | Layer       | Technology                                                        |
 |-------------|-------------------------------------------------------------------|
 | Frontend    | React + TypeScript + Tailwind + Vite + vite-plugin-pwa            |
-| Backend     | FastAPI + PostgreSQL + Redis                                       |
+| Backend     | FastAPI + PostgreSQL + Redis                                      |
 | AI tracker  | Claude Haiku (food/exercise parsing)                              |
 | AI planner  | Claude Sonnet (meal generation, vision)                           |
 | Nutrition   | USDA FoodData Central + Open Food Facts (fallback)                |
@@ -38,6 +38,7 @@
 - Text → Claude Haiku → structured data → Nutrition API
 - Rule: zero follow-up questions if AI >80% confident. "Banana" → 105 kcal, done.
 - Exercise: MET values (static table ~200 activities), kcal = MET × weight_kg × time_h
+- Let user add custom meals/snacks
 
 **Daily Dashboard:**
 - Calories in / out / net balance
