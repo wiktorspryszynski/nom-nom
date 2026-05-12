@@ -11,7 +11,7 @@
 | Layer       | Technology                                                        |
 |-------------|-------------------------------------------------------------------|
 | Frontend    | React + TypeScript + Tailwind + Vite + vite-plugin-pwa            |
-| Backend     | FastAPI + PostgreSQL + Redis                                      |
+| Backend     | FastAPI + PostgreSQL                                              |
 | AI tracker  | Claude Haiku (food/exercise parsing)                              |
 | AI planner  | Claude Sonnet (meal generation, vision)                           |
 | Nutrition   | USDA FoodData Central + Open Food Facts (fallback)                |
@@ -83,6 +83,7 @@ user_preference_profiles (id, user_id, profile_json, updated_at)
 - **PWA: static asset caching only** — offline data sync is overkill for v1
 - **Nutrition API fallback chain:** USDA → Open Food Facts → LLM estimation
 - **Food photos:** Sonnet Vision → description → Nutrition API (no custom CV model)
+- **No Redis** — not needed for v1; add later if session caching becomes necessary
 
 ## ML Strategy
 
@@ -101,7 +102,7 @@ user_preference_profiles (id, user_id, profile_json, updated_at)
 ## Roadmap
 
 ### v1: Core
-- [ ] Docker Compose scaffold (FastAPI + Postgres + Redis + React)
+- [ ] Docker Compose scaffold (FastAPI + Postgres + React)
 - [ ] Auth (OAuth2 + JWT, hardcoded users)
 - [ ] PWA setup (vite-plugin-pwa)
 - [ ] Meal Planner (A) — generation, selection, shopping list
@@ -125,6 +126,19 @@ user_preference_profiles (id, user_id, profile_json, updated_at)
 ## Development Notes
 
 - Backend API lives in `backend/`, frontend in `frontend/`
-- Use `docker compose up` to run the full stack locally
-- Two hardcoded users only — no self-registration flow
-- All AI calls go through the backend; never expose API keys to the frontend
+- All API routes are prefixed with `/api` (e.g. `/api/auth/token`, `/api/health`)
+- Vite dev server proxies `/api` → `http://localhost:8001` (no rewrite needed)
+- CORS origins are read from `CORS_ORIGINS` env var (comma-separated list)
+
+### Docker Compose profiles
+
+```bash
+# Local development (hot reload, mounted volumes)
+COMPOSE_PROFILES=dev docker compose up --build
+
+# Production (optimized builds, nginx for frontend)
+COMPOSE_PROFILES=prod docker compose up --build
+```
+
+Two hardcoded users only — no self-registration flow.  
+All AI calls go through the backend; never expose API keys to the frontend.

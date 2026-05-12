@@ -1,51 +1,70 @@
 services:
   backend:
-    build: ./backend
+    profiles: ["prod"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
     ports:
-      - "8001:8001"
-    environment:
-      DATABASE_URL: postgresql://nomnom:nomnom@db:5432/nomnom
-      REDIS_URL: redis://redis:6379
-      SECRET_KEY: ${SECRET_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-    volumes:
-      - ./backend:/app
+      - "127.0.0.1:8001:8001"
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
+
+  backend-dev:
+    profiles: ["dev"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
-    build: ./frontend
+    profiles: ["prod"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "127.0.0.1:8100:80"
+    depends_on:
+      - backend
+
+  frontend-dev:
+    profiles: ["dev"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "5174:5174"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    env_file:
+      - .env
     depends_on:
-      - backend
+      - backend-dev
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: nomnom
-      POSTGRES_PASSWORD: nomnom
-      POSTGRES_DB: nomnom
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-nomnom}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nomnom"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
 
 volumes:
   postgres_data:
