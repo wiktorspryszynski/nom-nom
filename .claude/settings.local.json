@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm create *)",
       "Bash(npm install *)",
-      "PowerShell(New-Item *)"
+      "PowerShell(New-Item *)",
+      "mcp__obsidian__list_directory",
+      "mcp__obsidian__read_text_file",
+      "mcp__obsidian__search_files"
     ]
   }
 }

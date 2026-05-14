@@ -11,6 +11,11 @@ class Base(DeclarativeBase):
     pass
 
 
+def init_db() -> None:
+    import app.models  # noqa: F401 — registers all models with Base
+    Base.metadata.create_all(bind=engine)
+
+
 def get_db():
     db = SessionLocal()
     try:
