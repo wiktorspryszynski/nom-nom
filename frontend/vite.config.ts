@@ -17,8 +17,8 @@ export default defineConfig({
         background_color: '#FDC535',
         display: 'standalone',
         icons: [
-          { src: '/nomnom-icon-padding.png', sizes: '192x192', type: 'image/png' },
-          { src: '/nomnom-icon-padding.png', sizes: '512x512', type: 'image/png' },
+          { src: '/nomnom-icon-bg.png', sizes: '192x192', type: 'image/png' },
+          { src: '/nomnom-icon-bg.png', sizes: '512x512', type: 'image/png' },
         ],
       },
       workbox: {
