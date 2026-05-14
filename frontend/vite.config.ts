@@ -13,12 +13,12 @@ export default defineConfig({
         name: 'NomNom',
         short_name: 'NomNom',
         description: 'Meal planning and diet tracking',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#FDC535',
+        background_color: '#FDC535',
         display: 'standalone',
         icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/nomnom-icon-padding.png', sizes: '192x192', type: 'image/png' },
+          { src: '/nomnom-icon-padding.png', sizes: '512x512', type: 'image/png' },
         ],
       },
       workbox: {
