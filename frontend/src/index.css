@@ -40,3 +40,29 @@
 .btn-fill:hover {
   color: var(--color-primary);
 }
+
+.btn-fill-dark {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.35s ease;
+}
+
+.btn-fill-dark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #000;
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.btn-fill-dark:hover::before {
+  transform: scaleY(1);
+}
+
+.btn-fill-dark:hover {
+  color: #fff;
+}
