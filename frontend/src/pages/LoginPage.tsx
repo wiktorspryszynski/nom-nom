@@ -28,7 +28,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
-          <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-32 h-32 drop-shadow-lg" />
+          <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-50 h-50" />
           <h1 className="text-5xl font-extrabold text-lily tracking-tight">NomNom</h1>
         </div>
 
