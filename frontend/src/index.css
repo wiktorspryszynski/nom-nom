@@ -7,3 +7,29 @@
   --color-ivory: #ffffd1;
   --font-sans: 'Nunito', sans-serif;
 }
+
+.btn-fill {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.35s ease;
+}
+
+.btn-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-lily);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.btn-fill:hover::before {
+  transform: scaleY(1);
+}
+
+.btn-fill:hover {
+  color: var(--color-primary);
+}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import ColorAdjuster from '../components/ColorAdjuster'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -18,8 +17,8 @@ export default function LoginPage() {
     try {
       await login(email, password)
       navigate('/')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } catch {
+      setError('Nieprawidłowy login lub hasło')
     } finally {
       setLoading(false)
     }
@@ -28,26 +27,29 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
-        <img src="/nomnom-icon-no_bg.png" alt="NomNom mascot" className="w-32 h-32 drop-shadow-lg" />
-
-        <h1 className="text-5xl font-extrabold text-lily tracking-tight">NomNom</h1>
+        <div className="flex flex-col items-center gap-2">
+          <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-32 h-32 drop-shadow-lg" />
+          <h1 className="text-5xl font-extrabold text-lily tracking-tight">NomNom</h1>
+        </div>
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
           <input
-            type="email"
-            placeholder="Email"
+            type="text"
+            placeholder="E-mail"
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="w-full bg-ivory border-2 border-lily text-lily placeholder:text-lily/50 rounded-2xl px-4 py-3 text-base font-semibold outline-none focus:border-lily/80"
+            style={{ borderRadius: '4px 18px 6px 16px / 18px 4px 16px 6px' }}
+            className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Hasło"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            className="w-full bg-ivory border-2 border-lily text-lily placeholder:text-lily/50 rounded-2xl px-4 py-3 text-base font-semibold outline-none focus:border-lily/80"
+            style={{ borderRadius: '16px 5px 18px 4px / 5px 16px 4px 18px' }}
+            className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
           />
 
           {error && (
@@ -57,13 +59,19 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full border-2 border-lily text-lily rounded-full py-3 text-base font-extrabold hover:bg-lily hover:text-primary transition-colors disabled:opacity-50"
+            className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold disabled:opacity-50 cursor-pointer disabled:cursor-default"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Logowanie…' : 'Zaloguj się'}
           </button>
         </form>
+
+        <p className="text-lily/70 text-sm font-semibold">
+          Nie masz konta?{' '}
+          <button type="button" className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer">
+            Zarejestruj się
+          </button>
+        </p>
       </div>
-      {import.meta.env.DEV && <ColorAdjuster />}
     </div>
   )
 }
