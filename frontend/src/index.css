@@ -6,8 +6,9 @@
   }
 }
 
+/* Core colors — src/theme.ts is the source of truth; keep these in sync */
 @theme {
-  --color-primary: #ffee99;
+  --color-primary: #FDC535;
   --color-primary-dark: #f7d578;
   --color-lily: #7d3ed0;
   --color-ivory: #ffffd1;

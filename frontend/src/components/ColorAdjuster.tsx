@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react'
+import { colors } from '../theme'
 
 const TOKENS = [
-  { key: 'primary',      label: 'Primary',      var: '--color-primary',      default: '#ffee99' },
-  { key: 'primary-dark', label: 'Primary Dark',  var: '--color-primary-dark', default: '#f7d578' },
-  { key: 'lily',         label: 'Lily',          var: '--color-lily',         default: '#7d3ed0' },
-  { key: 'ivory',        label: 'Ivory',         var: '--color-ivory',        default: '#ffffd1' },
+  { key: 'primary',      label: 'Primary',       var: '--color-primary',      default: colors.primary },
+  { key: 'primary-dark', label: 'Primary Dark',  var: '--color-primary-dark', default: colors.primaryDark },
+  { key: 'lily',         label: 'Lily',          var: '--color-lily',         default: colors.lily },
+  { key: 'ivory',        label: 'Ivory',         var: '--color-ivory',        default: colors.ivory },
 ] as const
 
 type TokenKey = typeof TOKENS[number]['key']
