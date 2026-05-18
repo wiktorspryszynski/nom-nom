@@ -25,7 +25,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary flex items-center justify-center px-6">
+    <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
           <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-50 h-50" />
