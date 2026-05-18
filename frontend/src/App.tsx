@@ -7,17 +7,13 @@ interface BeforeInstallPromptEvent extends Event {
 
 function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isIOS, setIsIOS] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
+  const [isIOS] = useState(() => /iPhone|iPad|iPod/.test(navigator.userAgent))
+  const [isStandalone] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
+  )
 
   useEffect(() => {
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
-    setIsIOS(ios)
-    setIsStandalone(standalone)
-
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
