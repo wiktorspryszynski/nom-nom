@@ -147,7 +147,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-2">
           <div className="relative flex justify-center">
             {logoActive && (
-              <div className="absolute bottom-[70%] left-[75%] w-56 z-10 bg-ivory rounded-2xl px-4 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
+              <div className="absolute bottom-[70%] left-[55%] w-50 z-10 bg-ivory rounded-2xl px-4 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
                 <p className="text-sm font-semibold text-lily leading-relaxed">
                   Planuję jadłospis, śledzę kalorie i pomagam jeść mądrzej 🥗
                 </p>
