@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
+import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
 import PlannerPage from './pages/PlannerPage'
 import MeasurementsPage from './pages/MeasurementsPage'
@@ -85,7 +86,8 @@ function AppShell() {
   return (
     <>
       <Routes>
-        <Route path="/login" element={token ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/login"    element={token ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/register" element={token ? <Navigate to="/" replace /> : <SignUpPage />} />
         {token ? (
           <>
             <Route path="/"             element={<DashboardPage />} />

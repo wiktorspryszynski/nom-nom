@@ -92,7 +92,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  border: 3px solid var(--color-lily);
+  border: 3px solid var(--input-border-color, var(--color-lily));
   border-radius: var(--r1);
   pointer-events: none;
 }
