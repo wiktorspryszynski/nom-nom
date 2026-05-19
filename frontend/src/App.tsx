@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
+import { ICON_BG, ICON_NO_BG } from './assets'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -44,7 +45,7 @@ function InstallBanner() {
   if (isIOS) {
     return (
       <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-start gap-3">
-        <img src="/nomnom-icon-bg.png" alt="" className="w-10 h-10 rounded-xl shrink-0" />
+        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-stone-900">Add NomNom to Home Screen</p>
           <p className="text-xs text-stone-500 mt-0.5">
@@ -59,7 +60,7 @@ function InstallBanner() {
   if (deferredPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-center gap-3">
-        <img src="/nomnom-icon-bg.png" alt="" className="w-10 h-10 rounded-xl shrink-0" />
+        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-stone-900">Install NomNom</p>
           <p className="text-xs text-stone-500 mt-0.5">Add to your home screen</p>
@@ -87,7 +88,7 @@ function AppShell() {
             token ? (
               <div className="min-h-screen bg-white flex items-center justify-center">
                 <div className="text-center">
-                  <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-32 h-32 mx-auto mb-4" />
+                  <img src={ICON_NO_BG} alt="NomNom" className="w-32 h-32 mx-auto mb-4" />
                   <h1 className="text-4xl font-bold text-stone-950 mb-1">NomNom</h1>
                   <p className="text-stone-500">Coming soon</p>
                 </div>

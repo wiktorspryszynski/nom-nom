@@ -1,6 +1,110 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ICON_NO_BG } from '../assets'
+
+function DemoRequestForm() {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'duplicate' | 'error'>('idle')
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/demo-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email }),
+      })
+      if (res.status === 409) { setStatus('duplicate'); return }
+      if (!res.ok) throw new Error()
+      setStatus('done')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  if (status === 'done') return (
+    <p className="text-center text-sm font-bold text-lily">
+      Dzięki, {name}! Odezwiemy się wkrótce. 🎉
+    </p>
+  )
+
+  if (!open) return (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
+    >
+      Poproś o dostęp demo
+    </button>
+  )
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
+      <input
+        type="text"
+        placeholder="Imię"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        required
+        style={{ borderRadius: '12px 4px 14px 6px / 4px 12px 6px 14px' }}
+        className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
+      />
+      <input
+        type="text"
+        placeholder="E-mail"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        required
+        style={{ borderRadius: '6px 14px 4px 12px / 14px 6px 12px 4px' }}
+        className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
+      />
+      {status === 'duplicate' && (
+        <p className="text-center text-sm font-bold text-lily/80">Ten e-mail już wysłał zgłoszenie.</p>
+      )}
+      {status === 'error' && (
+        <p className="text-center text-sm font-bold text-lily/80">Coś poszło nie tak, spróbuj ponownie.</p>
+      )}
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
+      >
+        {status === 'loading' ? 'Wysyłanie…' : 'Poproś o dostęp demo'}
+      </button>
+    </form>
+  )
+}
+
+function SignUpExplanation() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="w-full flex flex-col items-center gap-3">
+      <div className="w-full flex items-center gap-3">
+        <div className="flex-1 h-px bg-lily/30" />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="text-xs font-bold text-lily/50 whitespace-nowrap cursor-pointer hover:text-lily/80 transition-colors"
+        >
+          informacja o rejestracji {open ? '▲' : '▼'}
+        </button>
+        <div className="flex-1 h-px bg-lily/30" />
+      </div>
+      {open && (
+        <p className="text-center text-sm font-semibold text-lily/70 leading-relaxed">
+          NomNom korzysta z AI, które generuje realne koszty.<br />
+          Na razie aplikacja dostępna jest tylko dla zaproszonych osób.
+          <br /><br />
+          Jeśli chcesz spróbować, skontaktuj się ze mną bezpośrednio.
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -9,6 +113,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [logoActive, setLogoActive] = useState(false)
+
+  // Swap LOGO_ACTIVE in assets.ts when the active variant is ready
+  const LOGO_DEFAULT = ICON_NO_BG
+  const LOGO_ACTIVE = ICON_NO_BG
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -28,7 +137,33 @@ export default function LoginPage() {
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
-          <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-50 h-50" />
+          <div className="flex justify-center">
+            <div className={`relative transition-transform duration-500 ease-in-out ${logoActive ? '-translate-x-10' : 'translate-x-0'}`}>
+              {/* Speech bubble */}
+              <div
+                className={`absolute w-56 transition-all duration-500 ease-in-out ${
+                  logoActive
+                    ? 'opacity-100 translate-x-0 translate-y-0'
+                    : 'opacity-0 translate-x-8 translate-y-8 pointer-events-none'
+                }`}
+                style={{ top: '-130px', right: '-125px' }}
+              >
+                <div className="bg-ivory rounded-2xl px-4 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
+                  <p className="text-sm font-semibold text-lily leading-relaxed">
+                    Planuję jadłospis, śledzę kalorie i pomagam jeść mądrzej 🥗
+                  </p>
+                </div>
+              </div>
+              <img
+                src={logoActive ? LOGO_ACTIVE : LOGO_DEFAULT}
+                alt="NomNom"
+                className={`w-50 h-50 cursor-pointer select-none transition-transform duration-500 ease-in-out ${
+                  logoActive ? 'scale-95' : 'scale-100 hover:scale-[1.03]'
+                }`}
+                onClick={() => setLogoActive(o => !o)}
+              />
+            </div>
+          </div>
           <h1 className="text-5xl font-extrabold text-lily tracking-tight">NomNom</h1>
         </div>
 
@@ -66,7 +201,7 @@ export default function LoginPage() {
         </form>
 
         {/* SIGN-UP OPTION A — text link. Enable by changing false → true */}
-        {true && (
+        {false && (
           <p className="text-lily/70 text-sm font-semibold">
             Nie masz konta?{' '}
             <button type="button" className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer">
@@ -80,7 +215,7 @@ export default function LoginPage() {
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-lily/30" />
-              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">nie masz konta?</span>
+              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">lub zarejestruj się</span>
               <div className="flex-1 h-px bg-lily/30" />
             </div>
             <button
@@ -94,6 +229,21 @@ export default function LoginPage() {
             </button>
           </div>
         )}
+
+        {/* SIGN-UP OPTION C — demo request form. Enable by changing false → true */}
+        {false && (
+          <div className="w-full flex flex-col items-center gap-3">
+            <div className="w-full flex items-center gap-3">
+              <div className="flex-1 h-px bg-lily/30" />
+              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">lub zgłoś chęć demo</span>
+              <div className="flex-1 h-px bg-lily/30" />
+            </div>
+            <DemoRequestForm />
+          </div>
+        )}
+
+        {/* SIGN-UP OPTION D — explanation why sign-up is unavailable. Enable by changing false → true */}
+        {false && <SignUpExplanation />}
       </div>
     </div>
   )
