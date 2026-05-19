@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
-import { ICON_BG, ICON_NO_BG } from './assets'
+import DashboardPage from './pages/DashboardPage'
+import PlannerPage from './pages/PlannerPage'
+import MeasurementsPage from './pages/MeasurementsPage'
+import ProfilePage from './pages/ProfilePage'
+import { ICON_BG } from './assets'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -82,22 +86,17 @@ function AppShell() {
     <>
       <Routes>
         <Route path="/login" element={token ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route
-          path="/*"
-          element={
-            token ? (
-              <div className="min-h-screen bg-white flex items-center justify-center">
-                <div className="text-center">
-                  <img src={ICON_NO_BG} alt="NomNom" className="w-32 h-32 mx-auto mb-4" />
-                  <h1 className="text-4xl font-bold text-stone-950 mb-1">NomNom</h1>
-                  <p className="text-stone-500">Coming soon</p>
-                </div>
-              </div>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        {token ? (
+          <>
+            <Route path="/"             element={<DashboardPage />} />
+            <Route path="/planner"      element={<PlannerPage />} />
+            <Route path="/measurements" element={<MeasurementsPage />} />
+            <Route path="/profile"      element={<ProfilePage />} />
+            <Route path="*"             element={<Navigate to="/" replace />} />
+          </>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        )}
       </Routes>
       <InstallBanner />
     </>
