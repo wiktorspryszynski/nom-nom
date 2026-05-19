@@ -18,8 +18,8 @@ export default defineConfig({
         background_color: colors.primary,
         display: 'standalone',
         icons: [
-          { src: '/nomnom-icon-bg.png', sizes: '192x192', type: 'image/png' },
-          { src: '/nomnom-icon-bg.png', sizes: '512x512', type: 'image/png' },
+          { src: '/nomnom/nomnom-icon-bg.png', sizes: '192x192', type: 'image/png' },
+          { src: '/nomnom/nomnom-icon-bg.png', sizes: '512x512', type: 'image/png' },
         ],
       },
       workbox: {
@@ -38,7 +38,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8001',
+        target: process.env.API_TARGET ?? 'http://localhost:8001',
       },
     },
   },
