@@ -70,3 +70,33 @@
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+@keyframes letterBounce {
+  0%, 100% { transform: translateY(0); }
+  35%       { transform: translateY(-14px); }
+  65%       { transform: translateY(-5px); }
+}
+
+@keyframes inputTwitch {
+  0%   { border-radius: var(--r1); transform: translate(0px,  0px); }
+  33%  { border-radius: var(--r2); transform: translate(1px, -1px); }
+  66%  { border-radius: var(--r3); transform: translate(-1px, 1px); }
+  100% { border-radius: var(--r1); transform: translate(0px,  0px); }
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--color-lily);
+  border-radius: var(--r1);
+  pointer-events: none;
+}
+
+.input-wrap:focus-within::before {
+  animation: inputTwitch 0.54s steps(1, end) infinite;
+}

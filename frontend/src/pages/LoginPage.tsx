@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { SMALL_ICON_NO_BG } from '../assets'
+import { SMALL_ICON_NO_BG, NOMNOM_SMILING } from '../assets'
 
 function DemoRequestForm() {
   const [open, setOpen] = useState(false)
@@ -114,10 +114,17 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [logoActive, setLogoActive] = useState(false)
+  const [bouncing, setBouncing] = useState(false)
+
+  const handleTitleClick = () => {
+    if (bouncing) return
+    setBouncing(true)
+    setTimeout(() => setBouncing(false), 500 + 'NomNom'.length * 70)
+  }
 
   // Swap LOGO_ACTIVE in assets.ts when the active variant is ready
   const LOGO_DEFAULT = SMALL_ICON_NO_BG
-  const LOGO_ACTIVE = SMALL_ICON_NO_BG
+  const LOGO_ACTIVE = NOMNOM_SMILING
   const optionToDisplay: number | null = null // 1- text link, 2- GitHub, 3- demo form, 4- explanation. Set to null to hide all.
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -155,28 +162,59 @@ export default function LoginPage() {
               onClick={() => setLogoActive(o => !o)}
             />
           </div>
-          <h1 className="text-5xl font-extrabold text-lily tracking-tight">NomNom</h1>
+          <h1
+            className="text-5xl font-extrabold text-lily tracking-tight cursor-pointer select-none"
+            onClick={handleTitleClick}
+          >
+            {'NomNom'.split('').map((letter, i) => (
+              <span
+                key={i}
+                className="inline-block"
+                style={bouncing ? { animation: `letterBounce 0.5s ease both`, animationDelay: `${i * 70}ms` } : undefined}
+              >
+                {letter}
+              </span>
+            ))}
+          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
-          <input
-            type="text"
-            placeholder="E-mail"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            style={{ borderRadius: '4px 18px 6px 16px / 18px 4px 16px 6px' }}
-            className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
-          />
-          <input
-            type="password"
-            placeholder="Hasło"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            style={{ borderRadius: '16px 5px 18px 4px / 5px 16px 4px 18px' }}
-            className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
-          />
+          <div
+            className="input-wrap"
+            style={{
+              '--r1': '4px 18px 6px 16px / 18px 4px 16px 6px',
+              '--r2': '6px 14px 10px 20px / 20px 6px 14px 4px',
+              '--r3': '2px 22px 4px 14px / 14px 2px 20px 8px',
+            } as React.CSSProperties}
+          >
+            <input
+              type="text"
+              placeholder="E-mail"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              style={{ borderRadius: '4px 18px 6px 16px / 18px 4px 16px 6px' }}
+              className="w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none"
+            />
+          </div>
+          <div
+            className="input-wrap"
+            style={{
+              '--r1': '16px 5px 18px 4px / 5px 16px 4px 18px',
+              '--r2': '14px 8px 20px 2px / 8px 18px 2px 16px',
+              '--r3': '18px 2px 14px 6px / 2px 14px 6px 20px',
+            } as React.CSSProperties}
+          >
+            <input
+              type="password"
+              placeholder="Hasło"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              style={{ borderRadius: '16px 5px 18px 4px / 5px 16px 4px 18px' }}
+              className="w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none"
+            />
+          </div>
 
           {error && (
             <p className="text-center text-sm font-bold text-lily/80">{error}</p>
