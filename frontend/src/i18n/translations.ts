@@ -153,6 +153,16 @@ const pl = {
   calcActivityVery: 'Bardzo aktywny',
   calcActivityVeryDesc: 'codziennie lub praca fizyczna',
 
+  // ── Install banner ────────────────────────────────────────────────────────
+  installIosTitle: 'Dodaj NomNom do ekranu głównego',
+  installIosBody: 'Kliknij',
+  installIosShare: 'Udostępnij',
+  installIosThen: ', a następnie',
+  installIosAdd: 'Dodaj do ekranu głównego',
+  installTitle: 'Zainstaluj NomNom',
+  installSubtitle: 'Dodaj do ekranu głównego',
+  installButton: 'Zainstaluj',
+
   // ── Photo log ──────────────────────────────────────────────────────────────
   photoLogTitle: 'Analiza zdjęcia',
   photoLogAlt: 'Zdjęcie posiłku',
@@ -325,6 +335,16 @@ const en: typeof pl = {
   calcActivityActiveDesc: '3-5 workouts per week',
   calcActivityVery: 'Very active',
   calcActivityVeryDesc: 'daily training or physical job',
+
+  // ── Install banner ────────────────────────────────────────────────────────
+  installIosTitle: 'Add NomNom to your home screen',
+  installIosBody: 'Tap',
+  installIosShare: 'Share',
+  installIosThen: ', then',
+  installIosAdd: 'Add to Home Screen',
+  installTitle: 'Install NomNom',
+  installSubtitle: 'Add to home screen',
+  installButton: 'Install',
 
   // ── Photo log ──────────────────────────────────────────────────────────────
   photoLogTitle: 'Photo analysis',
