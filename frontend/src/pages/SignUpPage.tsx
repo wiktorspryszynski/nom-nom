@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD, NOMNOM_HAPPY } from '../assets'
+import { useLanguage } from '../context/LanguageContext'
 
 const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
@@ -20,13 +21,6 @@ interface FormData {
 type Status = 'idle' | 'loading' | 'error' | 'success'
 
 const STEPS = 3
-
-const TARGET_PRESETS = [
-  { label: 'Za 3 miesiące', value: '3m' },
-  { label: 'Za 6 miesięcy', value: '6m' },
-  { label: 'Za rok',        value: '12m' },
-  { label: 'Spokojnie',     value: 'none' },
-]
 
 const preventNegative = (e: React.KeyboardEvent<HTMLInputElement>) => {
   if (e.key === '-' || e.key === '+' || e.key === 'e') e.preventDefault()
@@ -105,6 +99,7 @@ function StepDots({ current }: { current: number }) {
 
 export default function SignUpPage() {
   const navigate = useNavigate()
+  const { t, lang } = useLanguage()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>({
     name: '', email: '', birthDate: '',
@@ -129,7 +124,7 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!data.targetDate) {
-      setError('Wybierz kiedy chcesz osiągnąć cel.')
+      setError(t('signupSelectGoal'))
       return
     }
     setStatus('loading')
@@ -148,30 +143,46 @@ export default function SignUpPage() {
           target_weight_kg: Number(data.targetWeight),
           current_daily_intake: Number(data.currentIntake),
           target_date_preset: data.targetDate,
+          language: lang,
         }),
       })
       if (!res.ok) throw new Error()
       setStatus('success')
     } catch {
       setStatus('error')
-      setError('Coś poszło nie tak. Spróbuj ponownie.')
+      setError(t('signupError'))
     }
   }
 
+  const TARGET_PRESETS = [
+    { label: t('signupGoalPreset3m'),   value: '3m' },
+    { label: t('signupGoalPreset6m'),   value: '6m' },
+    { label: t('signupGoalPreset12m'),  value: '12m' },
+    { label: t('signupGoalPresetNone'), value: 'none' },
+  ]
+
   if (status === 'success') {
+    const successLines = t('signupSuccessBody').split('\n')
     return (
       <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
         <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
           <img src={NOMNOM_HAPPY} alt="NomNom" className="w-36 h-36" />
-          <h2 className="text-4xl font-extrabold text-lily">Gotowe, {data.name}!</h2>
+          <h2 className="text-4xl font-extrabold text-lily">
+            {t('signupSuccessTitle').replace('{name}', data.name)}
+          </h2>
           <p className="text-lily/70 font-semibold leading-relaxed">
-            Twoje konto zostało utworzone.<br />Możesz się teraz zalogować.
+            {successLines.map((line, i) => (
+              <React.Fragment key={i}>
+                {line}
+                {i < successLines.length - 1 && <br />}
+              </React.Fragment>
+            ))}
           </p>
           <button
             onClick={() => navigate('/login')}
             className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
           >
-            Zaloguj się
+            {t('signupSuccessLogin')}
           </button>
         </div>
       </div>
@@ -185,13 +196,15 @@ export default function SignUpPage() {
         {/* Header — always visible */}
         <div className="flex flex-col items-center gap-2">
           <img src={STEP_ICONS[step - 1]} alt="NomNom" className="w-36 h-36" />
-          <h1 className="text-4xl font-extrabold text-lily tracking-tight">Nowe konto</h1>
-          <p className="text-lily/50 font-semibold text-sm">krok {step} z {STEPS}</p>
+          <h1 className="text-4xl font-extrabold text-lily tracking-tight">{t('signupTitle')}</h1>
+          <p className="text-lily/50 font-semibold text-sm">
+            {t('signupStep').replace('{step}', String(step)).replace('{total}', String(STEPS))}
+          </p>
         </div>
 
         <StepDots current={step} />
 
-        {/* ── Step 1: Podstawowe dane ── */}
+        {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
             <InputWrap
@@ -201,7 +214,7 @@ export default function SignUpPage() {
             >
               <PlainInput
                 type="text"
-                placeholder="Imię"
+                placeholder={t('signupNamePlaceholder')}
                 value={data.name}
                 onChange={set('name')}
                 required
@@ -216,7 +229,7 @@ export default function SignUpPage() {
             >
               <PlainInput
                 type="email"
-                placeholder="E-mail"
+                placeholder={t('signupEmailPlaceholder')}
                 value={data.email}
                 onChange={set('email')}
                 required
@@ -243,15 +256,15 @@ export default function SignUpPage() {
               type="submit"
               className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
             >
-              Dalej
+              {t('signupNext')}
             </button>
           </form>
         )}
 
-        {/* ── Step 2: Twoje ciało ── */}
+        {/* ── Step 2: Body ── */}
         {step === 2 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
-            <p className="text-center text-sm font-bold text-lily/50 -mb-1">Twoje ciało</p>
+            <p className="text-center text-sm font-bold text-lily/50 -mb-1">{t('signupStepBodyLabel')}</p>
 
             <div className="flex gap-2">
               {(['M', 'F'] as const).map(val => (
@@ -263,7 +276,7 @@ export default function SignUpPage() {
                     data.sex === val ? 'bg-lily text-primary' : 'bg-transparent text-lily'
                   }`}
                 >
-                  {val === 'M' ? 'Mężczyzna' : 'Kobieta'}
+                  {val === 'M' ? t('signupMale') : t('signupFemale')}
                 </button>
               ))}
             </div>
@@ -275,7 +288,7 @@ export default function SignUpPage() {
               borderColor="var(--color-ivory)"
             >
               <UnitInput
-                placeholder="Wzrost"
+                placeholder={t('signupHeightPlaceholder')}
                 value={data.height}
                 onChange={set('height')}
                 required
@@ -286,7 +299,6 @@ export default function SignUpPage() {
               />
             </InputWrap>
 
-            {/* Weight + Target weight side by side */}
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <InputWrap
@@ -296,7 +308,7 @@ export default function SignUpPage() {
                   borderColor="var(--color-ivory)"
                 >
                   <UnitInput
-                    placeholder="Waga"
+                    placeholder={t('signupWeightPlaceholder')}
                     value={data.weight}
                     onChange={set('weight')}
                     required
@@ -329,7 +341,7 @@ export default function SignUpPage() {
                   borderColor="var(--color-ivory)"
                 >
                   <UnitInput
-                    placeholder="Cel"
+                    placeholder={t('signupTargetPlaceholder')}
                     value={data.targetWeight}
                     onChange={set('targetWeight')}
                     required
@@ -348,25 +360,24 @@ export default function SignUpPage() {
                 onClick={prevStep}
                 className="btn-fill border-[3px] border-lily text-lily rounded-full py-3 px-7 text-base font-extrabold cursor-pointer shrink-0"
               >
-                Wstecz
+                {t('signupBack')}
               </button>
               <button
                 type="submit"
                 className="btn-fill flex-1 border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
               >
-                Dalej
+                {t('signupNext')}
               </button>
             </div>
           </form>
         )}
 
-        {/* ── Step 3: Cel ── */}
+        {/* ── Step 3: Goal ── */}
         {step === 3 && (
           <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
 
-            {/* Current intake */}
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-bold text-lily/50">Obecne dzienne spożycie</p>
+              <p className="text-sm font-bold text-lily/50">{t('signupCurrentIntakeLabel')}</p>
               <InputWrap
                 r1="14px 6px 16px 4px / 6px 14px 4px 16px"
                 r2="12px 10px 18px 6px / 10px 12px 6px 18px"
@@ -374,7 +385,7 @@ export default function SignUpPage() {
                 borderColor="var(--color-ivory)"
               >
                 <UnitInput
-                  placeholder="Dzienne kalorie"
+                  placeholder={t('signupCurrentIntakePlaceholder')}
                   value={data.currentIntake}
                   onChange={set('currentIntake')}
                   required
@@ -389,13 +400,12 @@ export default function SignUpPage() {
                 onClick={() => setShowCalcModal(true)}
                 className="self-end text-xs font-bold text-lily/50 hover:text-lily/80 transition-colors cursor-pointer"
               >
-                Oblicz moje spożycie →
+                {t('signupCalcLink')}
               </button>
             </div>
 
-            {/* Target date presets */}
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-bold text-lily/50">Kiedy chcesz osiągnąć cel?</p>
+              <p className="text-sm font-bold text-lily/50">{t('signupGoalWhenLabel')}</p>
               <div className="flex gap-2">
                 {TARGET_PRESETS.map(preset => {
                   const selected = data.targetDate === preset.value
@@ -405,9 +415,7 @@ export default function SignUpPage() {
                       type="button"
                       onClick={() => setData(d => ({ ...d, targetDate: preset.value }))}
                       className={`flex-1 py-4 px-1 rounded-2xl border-[3px] border-lily text-xs font-extrabold text-center leading-snug transition-colors cursor-pointer ${
-                        selected
-                          ? 'bg-lily text-primary'
-                          : 'bg-transparent text-lily'
+                        selected ? 'bg-lily text-primary' : 'bg-transparent text-lily'
                       }`}
                     >
                       {preset.label}
@@ -427,27 +435,27 @@ export default function SignUpPage() {
                 onClick={prevStep}
                 className="btn-fill border-[3px] border-lily text-lily rounded-full py-3 px-7 text-base font-extrabold cursor-pointer shrink-0"
               >
-                Wstecz
+                {t('signupBack')}
               </button>
               <button
                 type="submit"
                 disabled={status === 'loading'}
                 className="btn-fill flex-1 border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
               >
-                {status === 'loading' ? 'Tworzenie…' : 'Stwórz konto'}
+                {status === 'loading' ? t('signupCreating') : t('signupCreate')}
               </button>
             </div>
           </form>
         )}
 
         <p className="text-lily/60 text-sm font-semibold">
-          Masz już konto?{' '}
+          {t('signupHasAccount')}{' '}
           <button
             type="button"
             onClick={() => navigate('/login')}
             className="text-lily font-extrabold underline underline-offset-2 cursor-pointer hover:text-lily/80 transition-colors"
           >
-            Zaloguj się
+            {t('signupLoginLink')}
           </button>
         </p>
 

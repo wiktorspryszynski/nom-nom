@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { Sparkles, Plus, ChevronLeft, ChevronRight, Utensils, Dumbbell, X } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
+import { useLanguage } from '../context/LanguageContext'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-const DAYS = ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd']
-const MEALS = ['Śniadanie', 'Obiad', 'Kolacja', 'Przekąska']
-
 type MealEntry = { name: string; kcal: number }
 type DayPlan = Partial<Record<string, MealEntry>>
 
@@ -31,6 +29,8 @@ const savedMeals = [
 type Tab = 'plan' | 'saved'
 
 function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
+  const { ta } = useLanguage()
+  const DAYS = ta('plannerDays')
   const today = new Date().getDay()
   const todayIndex = today === 0 ? 6 : today - 1
   return (
@@ -56,6 +56,9 @@ function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: n
 }
 
 function DayView({ dayIndex }: { dayIndex: number }) {
+  const { t, ta } = useLanguage()
+  const MEALS = ta('plannerMeals')
+  const MEALS_PL = ['Śniadanie', 'Obiad', 'Kolacja', 'Przekąska']
   const plan = mockPlan[dayIndex]
   const totalKcal = Object.values(plan).reduce((s, m) => s + (m?.kcal ?? 0), 0)
 
@@ -63,12 +66,12 @@ function DayView({ dayIndex }: { dayIndex: number }) {
     <div className="space-y-3">
       {totalKcal > 0 && (
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold text-lily/40">Łącznie</span>
+          <span className="text-xs font-bold text-lily/40">{t('plannerTotal')}</span>
           <span className="text-xs font-extrabold text-lily">{totalKcal} kcal</span>
         </div>
       )}
-      {MEALS.map(meal => {
-        const entry = plan[meal]
+      {MEALS.map((meal, idx) => {
+        const entry = plan[MEALS_PL[idx]]
         return (
           <div key={meal} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
             <div className="flex items-center justify-between mb-2">
@@ -84,7 +87,7 @@ function DayView({ dayIndex }: { dayIndex: number }) {
               </div>
             ) : (
               <button className="flex items-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer">
-                <Plus size={14} /> Dodaj posiłek
+                <Plus size={14} /> {t('plannerAddMeal')}
               </button>
             )}
           </div>
@@ -95,6 +98,7 @@ function DayView({ dayIndex }: { dayIndex: number }) {
 }
 
 function SavedList() {
+  const { t } = useLanguage()
   const [filter, setFilter] = useState<'all' | 'food' | 'exercise'>('all')
   const filtered = savedMeals.filter(m => filter === 'all' || m.type === filter)
   return (
@@ -108,9 +112,9 @@ function SavedList() {
               filter === f ? 'bg-lily text-primary border-lily' : 'text-lily/50 border-lily/20'
             }`}
           >
-            {f === 'all' && 'Wszystkie'}
-            {f === 'food' && <><Utensils size={11} /> Posiłki</>}
-            {f === 'exercise' && <><Dumbbell size={11} /> Ćwiczenia</>}
+            {f === 'all' && t('plannerFilterAll')}
+            {f === 'food' && <><Utensils size={11} /> {t('plannerFilterMeals')}</>}
+            {f === 'exercise' && <><Dumbbell size={11} /> {t('plannerFilterExercise')}</>}
           </button>
         ))}
       </div>
@@ -118,7 +122,7 @@ function SavedList() {
       <button className="w-full flex items-center justify-center gap-2 border-[3px] border-dashed border-lily/30
                          text-lily/50 rounded-2xl py-4 text-sm font-extrabold hover:border-lily/50 hover:text-lily/70
                          transition-colors cursor-pointer">
-        <Plus size={16} /> Dodaj własny wpis
+        <Plus size={16} /> {t('plannerAddCustom')}
       </button>
 
       {filtered.map(m => (
@@ -133,8 +137,8 @@ function SavedList() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-lily">{m.name}</p>
             <div className="flex gap-1.5 mt-1 flex-wrap">
-              {m.tags.map(t => (
-                <span key={t} className="text-[10px] font-bold text-lily/40 bg-lily/8 px-2 py-0.5 rounded-full">{t}</span>
+              {m.tags.map(tag => (
+                <span key={tag} className="text-[10px] font-bold text-lily/40 bg-lily/8 px-2 py-0.5 rounded-full">{tag}</span>
               ))}
             </div>
           </div>
@@ -146,6 +150,8 @@ function SavedList() {
 }
 
 export default function PlannerPage() {
+  const { t, ta } = useLanguage()
+  const DAYS = ta('plannerDays')
   const [tab, setTab] = useState<Tab>('plan')
   const [selectedDay, setSelectedDay] = useState(() => {
     const d = new Date().getDay()
@@ -156,7 +162,7 @@ export default function PlannerPage() {
     <div className="min-h-dvh bg-white">
       {/* ── Header ── */}
       <div className="bg-primary px-5 pt-14 pb-6">
-        <h1 className="text-2xl font-extrabold text-lily mb-4">Jadłospis</h1>
+        <h1 className="text-2xl font-extrabold text-lily mb-4">{t('plannerTitle')}</h1>
 
         {/* Week navigation */}
         <div className="flex items-center justify-between mb-3">
@@ -173,20 +179,22 @@ export default function PlannerPage() {
         <button className="w-full flex items-center justify-center gap-2 bg-lily text-primary rounded-2xl py-4
                            text-base font-extrabold shadow-md active:scale-[0.98] transition-transform cursor-pointer">
           <Sparkles size={18} strokeWidth={2.5} />
-          Wygeneruj plan tygodnia (AI)
+          {t('plannerGenerateAI')}
         </button>
 
         {/* ── Tab switcher ── */}
         <div className="flex bg-lily/8 rounded-2xl p-1">
-          {(['plan', 'saved'] as const).map(t => (
+          {(['plan', 'saved'] as const).map(tabKey => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className={`flex-1 py-2 rounded-xl text-sm font-extrabold transition-colors cursor-pointer ${
-                tab === t ? 'bg-white text-lily shadow-sm' : 'text-lily/40'
+                tab === tabKey ? 'bg-white text-lily shadow-sm' : 'text-lily/40'
               }`}
             >
-              {t === 'plan' ? `Plan — ${DAYS[selectedDay]}` : 'Zapisane'}
+              {tabKey === 'plan'
+                ? t('plannerTabPlan').replace('{day}', DAYS[selectedDay])
+                : t('plannerTabSaved')}
             </button>
           ))}
         </div>

@@ -1,14 +1,17 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, CalendarDays, Scale, User } from 'lucide-react'
-
-const links = [
-  { to: '/', label: 'Dziś', Icon: LayoutDashboard },
-  { to: '/planner', label: 'Jadłospis', Icon: CalendarDays },
-  { to: '/measurements', label: 'Pomiary', Icon: Scale },
-  { to: '/profile', label: 'Profil', Icon: User },
-]
+import { useLanguage } from '../context/LanguageContext'
 
 export default function BottomNav() {
+  const { t } = useLanguage()
+
+  const links = [
+    { to: '/', label: t('navToday'), Icon: LayoutDashboard },
+    { to: '/planner', label: t('navPlanner'), Icon: CalendarDays },
+    { to: '/measurements', label: t('navMeasurements'), Icon: Scale },
+    { to: '/profile', label: t('navProfile'), Icon: User },
+  ]
+
   return (
     <nav className="fixed bottom-0 inset-x-0 bg-white border-t-[3px] border-lily/20 pb-safe">
       <div className="flex items-center justify-around h-16 max-w-sm mx-auto px-2">

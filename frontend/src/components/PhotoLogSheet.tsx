@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, RotateCcw, Check, Loader2, AlertCircle } from 'lucide-react'
+import { useLanguage } from '../context/LanguageContext'
 
 interface ParsedFood {
   name: string
@@ -37,6 +38,7 @@ function MacroChip({ label, value, unit, color, onChange }: {
 }
 
 export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
+  const { t } = useLanguage()
   const [preview, setPreview] = useState<string | null>(null)
   const [status, setStatus] = useState<'analyzing' | 'result' | 'error'>('analyzing')
   const [food, setFood] = useState<ParsedFood | null>(null)
@@ -116,7 +118,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-lily/10">
-          <h2 className="text-base font-extrabold text-lily">Analiza zdjęcia</h2>
+          <h2 className="text-base font-extrabold text-lily">{t('photoLogTitle')}</h2>
           <button onClick={onClose} className="text-lily/40 hover:text-lily/70 transition-colors cursor-pointer">
             <X size={20} />
           </button>
@@ -126,11 +128,11 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
           {/* Photo preview */}
           {preview && (
             <div className="relative rounded-2xl overflow-hidden bg-lily/5 aspect-video">
-              <img src={preview} alt="Zdjęcie posiłku" className="w-full h-full object-cover" />
+              <img src={preview} alt={t('photoLogAlt')} className="w-full h-full object-cover" />
               {status === 'analyzing' && (
                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2">
                   <Loader2 size={32} className="text-primary animate-spin" />
-                  <span className="text-sm font-extrabold text-white">Analizuję…</span>
+                  <span className="text-sm font-extrabold text-white">{t('photoLogAnalyzing')}</span>
                 </div>
               )}
             </div>
@@ -139,8 +141,8 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
           {/* Analyzing */}
           {status === 'analyzing' && (
             <div className="bg-ivory rounded-2xl p-4 text-center">
-              <p className="text-sm font-bold text-lily/60">Claude Sonnet analizuje zdjęcie</p>
-              <p className="text-xs text-lily/40 mt-1">Rozpoznaję posiłek i szacuję wartości odżywcze…</p>
+              <p className="text-sm font-bold text-lily/60">{t('photoLogAnalyzingBody')}</p>
+              <p className="text-xs text-lily/40 mt-1">{t('photoLogAnalyzingDetail')}</p>
             </div>
           )}
 
@@ -151,10 +153,10 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
               <div>
                 <p className="text-sm font-bold text-red-500">{errorMsg}</p>
                 <button
-                  onClick={() => { prevFileRef.current = null; if (file) { const f = file; prevFileRef.current = null; setStatus('analyzing'); } }}
+                  onClick={() => { prevFileRef.current = null; if (file) { prevFileRef.current = null; setStatus('analyzing'); } }}
                   className="flex items-center gap-1 text-xs font-bold text-red-400 mt-2 cursor-pointer"
                 >
-                  <RotateCcw size={12} /> Spróbuj ponownie
+                  <RotateCcw size={12} /> {t('photoLogRetry')}
                 </button>
               </div>
             </div>
@@ -168,15 +170,15 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${food.confidence > 0.8 ? 'bg-[#3ec9a7]' : 'bg-[#f7a84a]'}`} />
                   <span className="text-xs font-bold text-lily/50">
-                    Pewność: {Math.round(food.confidence * 100)}%
-                    {food.confidence < 0.7 && ' — sprawdź i popraw wartości'}
+                    {t('photoLogConfidence').replace('{pct}', String(Math.round(food.confidence * 100)))}
+                    {food.confidence < 0.7 && ` ${t('photoLogConfidenceLow')}`}
                   </span>
                 </div>
               )}
 
               {/* Name */}
               <div>
-                <label className="text-[10px] font-extrabold text-lily/40 uppercase tracking-widest">Posiłek</label>
+                <label className="text-[10px] font-extrabold text-lily/40 uppercase tracking-widest">{t('photoLogMealLabel')}</label>
                 <input
                   type="text"
                   value={food.name}
@@ -190,7 +192,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
 
               {/* Kcal */}
               <div className="bg-primary/30 rounded-2xl p-4 flex items-center justify-between">
-                <span className="text-sm font-extrabold text-lily">Kalorie</span>
+                <span className="text-sm font-extrabold text-lily">{t('photoLogCalories')}</span>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="number"
@@ -204,13 +206,13 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
 
               {/* Macros */}
               <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
-                <p className="text-[10px] font-extrabold text-lily/40 uppercase tracking-widest mb-4">Makroskładniki</p>
+                <p className="text-[10px] font-extrabold text-lily/40 uppercase tracking-widest mb-4">{t('photoLogMacros')}</p>
                 <div className="flex justify-around">
-                  <MacroChip label="Białko" value={food.protein} unit="g" color="#7d3ed0"
+                  <MacroChip label={t('photoLogProtein')} value={food.protein} unit="g" color="#7d3ed0"
                     onChange={v => setFood(f => f ? { ...f, protein: v } : f)} />
-                  <MacroChip label="Tłuszcze" value={food.fat} unit="g" color="#f7a84a"
+                  <MacroChip label={t('photoLogFat')} value={food.fat} unit="g" color="#f7a84a"
                     onChange={v => setFood(f => f ? { ...f, fat: v } : f)} />
-                  <MacroChip label="Węgle" value={food.carbs} unit="g" color="#3ec9a7"
+                  <MacroChip label={t('photoLogCarbs')} value={food.carbs} unit="g" color="#3ec9a7"
                     onChange={v => setFood(f => f ? { ...f, carbs: v } : f)} />
                 </div>
               </div>
@@ -224,12 +226,12 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
                            cursor-pointer disabled:opacity-60 disabled:cursor-default"
               >
                 {saving
-                  ? <><Loader2 size={18} className="animate-spin" /> Zapisuję…</>
-                  : <><Check size={18} strokeWidth={2.5} /> Zapisz wpis</>}
+                  ? <><Loader2 size={18} className="animate-spin" /> {t('photoLogSaving')}</>
+                  : <><Check size={18} strokeWidth={2.5} /> {t('photoLogSave')}</>}
               </button>
 
               <button onClick={onClose} className="w-full text-center text-sm font-bold text-lily/40 cursor-pointer hover:text-lily/60 transition-colors">
-                Anuluj
+                {t('photoLogCancel')}
               </button>
             </>
           )}

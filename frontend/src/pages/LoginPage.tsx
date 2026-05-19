@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { SMALL_ICON_NO_BG, NOMNOM_SMILING } from '../assets'
 
 function DemoRequestForm() {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -28,7 +30,7 @@ function DemoRequestForm() {
 
   if (status === 'done') return (
     <p className="text-center text-sm font-bold text-lily">
-      Dzięki, {name}! Odezwiemy się wkrótce. 🎉
+      {t('loginDemoDone').replace('{name}', name)}
     </p>
   )
 
@@ -38,7 +40,7 @@ function DemoRequestForm() {
       onClick={() => setOpen(true)}
       className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
     >
-      Poproś o dostęp demo
+      {t('loginDemoButton')}
     </button>
   )
 
@@ -46,7 +48,7 @@ function DemoRequestForm() {
     <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
       <input
         type="text"
-        placeholder="Imię"
+        placeholder={t('loginDemoNamePlaceholder')}
         value={name}
         onChange={e => setName(e.target.value)}
         required
@@ -55,7 +57,7 @@ function DemoRequestForm() {
       />
       <input
         type="text"
-        placeholder="E-mail"
+        placeholder={t('loginDemoEmailPlaceholder')}
         value={email}
         onChange={e => setEmail(e.target.value)}
         required
@@ -63,24 +65,26 @@ function DemoRequestForm() {
         className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
       />
       {status === 'duplicate' && (
-        <p className="text-center text-sm font-bold text-lily/80">Ten e-mail już wysłał zgłoszenie.</p>
+        <p className="text-center text-sm font-bold text-lily/80">{t('loginDemoDuplicate')}</p>
       )}
       {status === 'error' && (
-        <p className="text-center text-sm font-bold text-lily/80">Coś poszło nie tak, spróbuj ponownie.</p>
+        <p className="text-center text-sm font-bold text-lily/80">{t('loginDemoError')}</p>
       )}
       <button
         type="submit"
         disabled={status === 'loading'}
         className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
       >
-        {status === 'loading' ? 'Wysyłanie…' : 'Poproś o dostęp demo'}
+        {status === 'loading' ? t('loginDemoSending') : t('loginDemoButton')}
       </button>
     </form>
   )
 }
 
 function SignUpExplanation() {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
+  const lines = t('loginInfoText').split('\n')
   return (
     <div className="w-full flex flex-col items-center gap-3">
       <div className="w-full flex items-center gap-3">
@@ -90,16 +94,18 @@ function SignUpExplanation() {
           onClick={() => setOpen(o => !o)}
           className="text-xs font-bold text-lily/50 whitespace-nowrap cursor-pointer hover:text-lily/80 transition-colors"
         >
-          informacja o rejestracji {open ? '▲' : '▼'}
+          {t('loginInfoToggle')} {open ? '▲' : '▼'}
         </button>
         <div className="flex-1 h-px bg-lily/30" />
       </div>
       {open && (
         <p className="text-center text-sm font-semibold text-lily/70 leading-relaxed">
-          NomNom korzysta z AI, które generuje realne koszty.<br />
-          Na razie aplikacja dostępna jest tylko dla zaproszonych osób.
-          <br /><br />
-          Jeśli chcesz spróbować, skontaktuj się ze mną bezpośrednio.
+          {lines.map((line, i) => (
+            <React.Fragment key={i}>
+              {line}
+              {i < lines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
         </p>
       )}
     </div>
@@ -108,6 +114,7 @@ function SignUpExplanation() {
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { t, lang, setLang } = useLanguage()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -122,10 +129,9 @@ export default function LoginPage() {
     setTimeout(() => setBouncing(false), 500 + 'NomNom'.length * 70)
   }
 
-  // Swap LOGO_ACTIVE in assets.ts when the active variant is ready
   const LOGO_DEFAULT = SMALL_ICON_NO_BG
   const LOGO_ACTIVE = NOMNOM_SMILING
-  const optionToDisplay: number | null = null // 1- text link, 2- GitHub, 3- demo form, 4- explanation. Set to null to hide all.
+  const optionToDisplay: number | null = null
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -135,7 +141,7 @@ export default function LoginPage() {
       await login(email, password)
       navigate('/')
     } catch {
-      setError('Nieprawidłowy login lub hasło')
+      setError(t('loginError'))
     } finally {
       setLoading(false)
     }
@@ -143,13 +149,29 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
+      {/* Language toggle — top right */}
+      <div className="absolute top-4 right-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
+        {(['pl', 'en'] as const).map(l => (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setLang(l)}
+            className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+              lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+            }`}
+          >
+            {l === 'pl' ? 'PL' : 'EN'}
+          </button>
+        ))}
+      </div>
+
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
           <div className="relative flex justify-center">
             {logoActive && (
               <div className="absolute bottom-[70%] left-[55%] w-50 z-10 bg-ivory rounded-2xl px-4 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
                 <p className="text-sm font-semibold text-lily leading-relaxed">
-                  Planuję jadłospis, śledzę kalorie i pomagam jeść mądrzej 🥗
+                  {t('loginLogoTooltip')}
                 </p>
               </div>
             )}
@@ -189,7 +211,7 @@ export default function LoginPage() {
           >
             <input
               type="text"
-              placeholder="E-mail"
+              placeholder={t('loginEmail')}
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -207,7 +229,7 @@ export default function LoginPage() {
           >
             <input
               type="password"
-              placeholder="Hasło"
+              placeholder={t('loginPassword')}
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
@@ -225,16 +247,16 @@ export default function LoginPage() {
             disabled={loading}
             className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold disabled:opacity-50 cursor-pointer disabled:cursor-default"
           >
-            {loading ? 'Logowanie…' : 'Zaloguj się'}
+            {loading ? t('loginLoading') : t('loginSubmit')}
           </button>
         </form>
 
         {/* SIGN-UP OPTION 1 — text link. */}
         {optionToDisplay === 1 && (
           <p className="text-lily/70 text-sm font-semibold">
-            Nie masz konta?{' '}
+            {t('loginNoAccount')}{' '}
             <button type="button" className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer">
-              Zarejestruj się
+              {t('loginSignUpLink')}
             </button>
           </p>
         )}
@@ -244,7 +266,7 @@ export default function LoginPage() {
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-lily/30" />
-              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">lub zarejestruj się</span>
+              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">{t('loginOrSignUpLabel')}</span>
               <div className="flex-1 h-px bg-lily/30" />
             </div>
             <button
@@ -254,7 +276,7 @@ export default function LoginPage() {
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 shrink-0">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
               </svg>
-              Zarejestruj się przez GitHub
+              {t('loginGitHub')}
             </button>
           </div>
         )}
@@ -264,7 +286,7 @@ export default function LoginPage() {
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-lily/30" />
-              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">lub zgłoś chęć demo</span>
+              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">{t('loginOrDemoLabel')}</span>
               <div className="flex-1 h-px bg-lily/30" />
             </div>
             <DemoRequestForm />

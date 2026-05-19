@@ -1,11 +1,5 @@
 import React, { useState } from 'react'
-
-const ACTIVITY_LEVELS = [
-  { label: 'Siedzący',         desc: 'biuro, mało ruchu',                   multiplier: 1.2   },
-  { label: 'Lekko aktywny',    desc: '1-2 treningi w tygodniu',             multiplier: 1.375 },
-  { label: 'Aktywny',          desc: '3-5 treningów w tygodniu',            multiplier: 1.55  },
-  { label: 'Bardzo aktywny',   desc: 'codziennie lub praca fizyczna',       multiplier: 1.725 },
-]
+import { useLanguage } from '../context/LanguageContext'
 
 const preventNegative = (e: React.KeyboardEvent<HTMLInputElement>) => {
   if (e.key === '-' || e.key === '+' || e.key === 'e') e.preventDefault()
@@ -32,8 +26,16 @@ export default function CalorieCalculatorModal({
   onConfirm: (kcal: number) => void
   onClose: () => void
 }) {
+  const { t } = useLanguage()
   const [activityIdx, setActivityIdx] = useState<number | null>(null)
   const [manualAge, setManualAge] = useState('')
+
+  const ACTIVITY_LEVELS = [
+    { label: t('calcActivitySedentary'), desc: t('calcActivitySedentaryDesc'), multiplier: 1.2   },
+    { label: t('calcActivityLight'),     desc: t('calcActivityLightDesc'),     multiplier: 1.375 },
+    { label: t('calcActivityActive'),    desc: t('calcActivityActiveDesc'),    multiplier: 1.55  },
+    { label: t('calcActivityVery'),      desc: t('calcActivityVeryDesc'),      multiplier: 1.725 },
+  ]
 
   const age = ageFromBirthDate(birthDate) ?? (manualAge ? Number(manualAge) : null)
 
@@ -55,11 +57,11 @@ export default function CalorieCalculatorModal({
 
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-extrabold text-lily">Kalkulator kalorii</h2>
+            <h2 className="text-2xl font-extrabold text-lily">{t('calcTitle')}</h2>
             <button
               type="button"
               onClick={onClose}
-              aria-label="Zamknij"
+              aria-label={t('calcClose')}
               className="text-lily/50 hover:text-lily text-3xl font-bold cursor-pointer transition-colors leading-none"
             >
               ×
@@ -69,11 +71,11 @@ export default function CalorieCalculatorModal({
           {/* Age — only when no birthDate */}
           {!birthDate && (
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-bold text-lily/50">Wiek</p>
+              <p className="text-sm font-bold text-lily/50">{t('calcAge')}</p>
               <div className="relative flex items-center">
                 <input
                   type="number"
-                  placeholder="Wiek"
+                  placeholder={t('calcAgePlaceholder')}
                   value={manualAge}
                   onChange={e => setManualAge(e.target.value)}
                   onKeyDown={preventNegative}
@@ -82,7 +84,7 @@ export default function CalorieCalculatorModal({
                   className="w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 pr-14 text-base font-semibold outline-none rounded-xl border-[3px] border-lily [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="absolute right-4 text-lily/40 font-bold text-sm pointer-events-none select-none">
-                  lat
+                  {t('calcAgeUnit')}
                 </span>
               </div>
             </div>
@@ -90,7 +92,7 @@ export default function CalorieCalculatorModal({
 
           {/* Activity level */}
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-bold text-lily/50">Poziom aktywności</p>
+            <p className="text-sm font-bold text-lily/50">{t('calcActivity')}</p>
             <div className="flex flex-col gap-2">
               {ACTIVITY_LEVELS.map((level, i) => {
                 const selected = activityIdx === i
@@ -120,7 +122,7 @@ export default function CalorieCalculatorModal({
             className="flex flex-col items-center gap-1 transition-opacity duration-300"
             style={{ opacity: tdee ? 1 : 0.25 }}
           >
-            <p className="text-lily/60 text-sm font-semibold">Twoje dzienne zapotrzebowanie</p>
+            <p className="text-lily/60 text-sm font-semibold">{t('calcResult')}</p>
             <p className="text-6xl font-extrabold text-lily tabular-nums">
               {tdee ?? '—'}
             </p>
@@ -134,7 +136,7 @@ export default function CalorieCalculatorModal({
             onClick={() => tdee && onConfirm(tdee)}
             className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-30 disabled:cursor-default"
           >
-            Użyj tej wartości
+            {t('calcConfirm')}
           </button>
 
         </div>
