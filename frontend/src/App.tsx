@@ -52,9 +52,9 @@ function InstallBanner() {
       <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-start gap-3">
         <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">Add NomNom to Home Screen</p>
+          <p className="text-sm font-semibold text-stone-900">Dodaj NomNom do ekranu głównego</p>
           <p className="text-xs text-stone-500 mt-0.5">
-            Tap <span className="font-medium">Share</span> then <span className="font-medium">Add to Home Screen</span>
+            Kliknij <span className="font-medium">Udostępnij</span>, a następnie <span className="font-medium">Dodaj do ekranu głównego</span>
           </p>
         </div>
         <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0">×</button>
@@ -67,8 +67,8 @@ function InstallBanner() {
       <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-center gap-3">
         <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">Install NomNom</p>
-          <p className="text-xs text-stone-500 mt-0.5">Add to your home screen</p>
+          <p className="text-sm font-semibold text-stone-900">Zainstaluj NomNom</p>
+          <p className="text-xs text-stone-500 mt-0.5">Dodaj do ekranu głównego</p>
         </div>
         <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0 mr-1">×</button>
         <button onClick={install} className="bg-primary text-stone-900 text-sm font-semibold px-4 py-1.5 rounded-xl shrink-0">
