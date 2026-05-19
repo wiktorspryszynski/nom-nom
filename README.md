@@ -25,11 +25,11 @@ Installable as a PWA on mobile and desktop.
 | Layer      | Technology                                          |
 |------------|-----------------------------------------------------|
 | Frontend   | React + TypeScript + Tailwind + Vite + PWA          |
-| Backend    | FastAPI + PostgreSQL + Redis                        |
-| AI         | Claude Haiku (tracker) + Claude Sonnet (planner)   |
-| Nutrition  | USDA FoodData Central + Open Food Facts (fallback) |
+| Backend    | FastAPI + PostgreSQL                                |
+| AI         | Claude Haiku (tracker) + Claude Sonnet (planner)    |
+| Nutrition  | USDA FoodData Central + Open Food Facts (fallback)  |
 | Auth       | OAuth2 + JWT, hardcoded users                       |
-| Deploy     | Docker Compose → VPS                               |
+| Deploy     | Docker Compose → VPS                                |
 
 ---
 
