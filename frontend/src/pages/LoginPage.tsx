@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { ICON_NO_BG } from '../assets'
+import { SMALL_ICON_NO_BG } from '../assets'
 
 function DemoRequestForm() {
   const [open, setOpen] = useState(false)
@@ -116,8 +116,9 @@ export default function LoginPage() {
   const [logoActive, setLogoActive] = useState(false)
 
   // Swap LOGO_ACTIVE in assets.ts when the active variant is ready
-  const LOGO_DEFAULT = ICON_NO_BG
-  const LOGO_ACTIVE = ICON_NO_BG
+  const LOGO_DEFAULT = SMALL_ICON_NO_BG
+  const LOGO_ACTIVE = SMALL_ICON_NO_BG
+  const optionToDisplay: number | null = null // 1- text link, 2- GitHub, 3- demo form, 4- explanation. Set to null to hide all.
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -137,32 +138,22 @@ export default function LoginPage() {
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex justify-center">
-            <div className={`relative transition-transform duration-500 ease-in-out ${logoActive ? '-translate-x-10' : 'translate-x-0'}`}>
-              {/* Speech bubble */}
-              <div
-                className={`absolute w-56 transition-all duration-500 ease-in-out ${
-                  logoActive
-                    ? 'opacity-100 translate-x-0 translate-y-0'
-                    : 'opacity-0 translate-x-8 translate-y-8 pointer-events-none'
-                }`}
-                style={{ top: '-130px', right: '-125px' }}
-              >
-                <div className="bg-ivory rounded-2xl px-4 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
-                  <p className="text-sm font-semibold text-lily leading-relaxed">
-                    Planuję jadłospis, śledzę kalorie i pomagam jeść mądrzej 🥗
-                  </p>
-                </div>
+          <div className="relative flex justify-center">
+            {logoActive && (
+              <div className="absolute bottom-full mb-3 w-56 bg-ivory rounded-2xl px-4 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.14)]">
+                <p className="text-sm font-semibold text-lily leading-relaxed">
+                  Planuję jadłospis, śledzę kalorie i pomagam jeść mądrzej 🥗
+                </p>
               </div>
-              <img
-                src={logoActive ? LOGO_ACTIVE : LOGO_DEFAULT}
-                alt="NomNom"
-                className={`w-50 h-50 cursor-pointer select-none transition-transform duration-500 ease-in-out ${
-                  logoActive ? 'scale-95' : 'scale-100 hover:scale-[1.03]'
-                }`}
-                onClick={() => setLogoActive(o => !o)}
-              />
-            </div>
+            )}
+            <img
+              src={logoActive ? LOGO_ACTIVE : LOGO_DEFAULT}
+              alt="NomNom"
+              className={`w-50 h-50 cursor-pointer select-none transition-transform duration-500 ease-in-out ${
+                logoActive ? 'scale-95' : 'scale-100 hover:scale-[1.03]'
+              }`}
+              onClick={() => setLogoActive(o => !o)}
+            />
           </div>
           <h1 className="text-5xl font-extrabold text-lily tracking-tight">NomNom</h1>
         </div>
@@ -200,8 +191,8 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* SIGN-UP OPTION A — text link. Enable by changing false → true */}
-        {false && (
+        {/* SIGN-UP OPTION 1 — text link. */}
+        {optionToDisplay === 1 && (
           <p className="text-lily/70 text-sm font-semibold">
             Nie masz konta?{' '}
             <button type="button" className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer">
@@ -210,8 +201,8 @@ export default function LoginPage() {
           </p>
         )}
 
-        {/* SIGN-UP OPTION B — divider + GitHub button. Enable by changing false → true */}
-        {false && (
+        {/* SIGN-UP OPTION 2 — divider + GitHub button. */}
+        {optionToDisplay === 2 && (
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-lily/30" />
@@ -230,8 +221,8 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* SIGN-UP OPTION C — demo request form. Enable by changing false → true */}
-        {false && (
+        {/* SIGN-UP OPTION 3 — demo request form. */}
+        {optionToDisplay === 3 && (
           <div className="w-full flex flex-col items-center gap-3">
             <div className="w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-lily/30" />
@@ -242,8 +233,10 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* SIGN-UP OPTION D — explanation why sign-up is unavailable. Enable by changing false → true */}
-        {false && <SignUpExplanation />}
+        {/* SIGN-UP OPTION 4 — explanation why sign-up is unavailable. */}
+        {optionToDisplay === 4 &&
+          <SignUpExplanation />
+        }
       </div>
     </div>
   )
