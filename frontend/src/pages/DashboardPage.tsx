@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Utensils, Dumbbell, ChevronRight, Flame, Droplets, Beef,
-  Droplet, Plus, Send, CalendarDays,
+  Droplet, Send, CalendarDays, Camera,
 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
+import PhotoLogSheet from '../components/PhotoLogSheet'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const GOAL_KCAL = 2000
@@ -72,7 +73,7 @@ function MacroBar({ label, eaten, goal, color, icon: Icon }: {
   )
 }
 
-function QuickLogWidget() {
+function QuickLogWidget({ onCamera }: { onCamera: () => void }) {
   const [mode, setMode] = useState<'food' | 'exercise'>('food')
   const [text, setText] = useState('')
   return (
@@ -106,6 +107,14 @@ function QuickLogWidget() {
           className="flex-1 bg-white border-[2px] border-lily/30 text-lily placeholder:text-lily/35
                      px-3 py-2.5 text-sm font-semibold outline-none focus:border-lily/60 transition-colors"
         />
+        <button
+          onClick={onCamera}
+          className="w-11 h-11 bg-white border-[2px] border-lily/30 rounded-xl flex items-center justify-center shrink-0
+                     hover:border-lily/60 active:scale-95 transition-all cursor-pointer"
+          aria-label="Dodaj zdjęcie"
+        >
+          <Camera size={17} className="text-lily/60" />
+        </button>
         <button
           className="w-11 h-11 bg-lily rounded-xl flex items-center justify-center shrink-0
                      active:scale-95 transition-transform cursor-pointer"
@@ -198,6 +207,16 @@ function todayLabel() {
 }
 
 export default function DashboardPage() {
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleCameraClick = () => fileInputRef.current?.click()
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (f) setPhotoFile(f)
+    e.target.value = ''
+  }
+
   return (
     <div className="min-h-dvh bg-white">
       {/* ── Yellow header ── */}
@@ -250,7 +269,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Quick log widget (replaces FAB) ── */}
-        <QuickLogWidget />
+        <QuickLogWidget onCamera={handleCameraClick} />
 
         {/* ── Water ── */}
         <WaterWidget />
@@ -271,6 +290,22 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Hidden file input — opens camera on mobile */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        onChange={handleFileChange}
+        aria-hidden
+      />
+
+      <PhotoLogSheet
+        file={photoFile}
+        onClose={() => setPhotoFile(null)}
+      />
 
       <BottomNav />
     </div>
