@@ -1,6 +1,102 @@
 @import "tailwindcss";
 
+@layer base {
+  body {
+    background-color: var(--color-primary);
+  }
+}
+
+/* Core colors — src/theme.ts is the source of truth; keep these in sync */
 @theme {
   --color-primary: #FDC535;
-  --color-primary-dark: #E6B020;
+  --color-primary-dark: #f7d578;
+  --color-lily: #7d3ed0;
+  --color-ivory: #ffffd1;
+  --font-sans: 'Nunito', sans-serif;
+}
+
+.btn-fill {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.35s ease;
+}
+
+.btn-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-lily);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.btn-fill:hover::before {
+  transform: scaleY(1);
+}
+
+.btn-fill:hover {
+  color: var(--color-primary);
+}
+
+.btn-fill-dark {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.35s ease;
+}
+
+.btn-fill-dark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #000;
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.btn-fill-dark:hover::before {
+  transform: scaleY(1);
+}
+
+.btn-fill-dark:hover {
+  color: #fff;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes letterBounce {
+  0%, 100% { transform: translateY(0); }
+  35%       { transform: translateY(-14px); }
+  65%       { transform: translateY(-5px); }
+}
+
+@keyframes inputTwitch {
+  0%   { border-radius: var(--r1); transform: translate(0px,  0px); }
+  33%  { border-radius: var(--r2); transform: translate(1px, -1px); }
+  66%  { border-radius: var(--r3); transform: translate(-1px, 1px); }
+  100% { border-radius: var(--r1); transform: translate(0px,  0px); }
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--input-border-color, var(--color-lily));
+  border-radius: var(--r1);
+  pointer-events: none;
+}
+
+.input-wrap:focus-within::before {
+  animation: inputTwitch 0.54s steps(1, end) infinite;
 }

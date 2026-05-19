@@ -23,6 +23,13 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5174"
 
+    # Email notifications for demo requests (optional — leave empty to skip)
+    smtp_host: str = ""
+    smtp_port: int = 465
+    smtp_user: str = ""
+    smtp_password: str = ""
+    notify_email: str = ""
+
     class Config:
         env_file = ".env"
 

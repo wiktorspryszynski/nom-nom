@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, meal_planner, tracker, measurements
+from app.routers import auth, meal_planner, tracker, measurements, demo
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(meal_planner.router, prefix="/api/meal-planner", tags=["meal-planner"])
 app.include_router(tracker.router, prefix="/api/tracker", tags=["tracker"])
 app.include_router(measurements.router, prefix="/api/measurements", tags=["measurements"])
+app.include_router(demo.router, prefix="/api/demo-request", tags=["demo"])
 
 
 @app.get("/api/health")

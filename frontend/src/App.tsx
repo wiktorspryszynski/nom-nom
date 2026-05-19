@@ -1,4 +1,14 @@
 import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { LanguageProvider, useLanguage } from './context/LanguageContext'
+import LoginPage from './pages/LoginPage'
+import SignUpPage from './pages/SignUpPage'
+import DashboardPage from './pages/DashboardPage'
+import PlannerPage from './pages/PlannerPage'
+import MeasurementsPage from './pages/MeasurementsPage'
+import ProfilePage from './pages/ProfilePage'
+import { ICON_BG } from './assets'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -7,17 +17,13 @@ interface BeforeInstallPromptEvent extends Event {
 
 function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isIOS, setIsIOS] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
+  const [isIOS] = useState(() => /iPhone|iPad|iPod/.test(navigator.userAgent))
+  const [isStandalone] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
+  )
 
   useEffect(() => {
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
-    setIsIOS(ios)
-    setIsStandalone(standalone)
-
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
@@ -38,6 +44,7 @@ function useInstallPrompt() {
 
 function InstallBanner() {
   const { deferredPrompt, isIOS, isStandalone, install } = useInstallPrompt()
+  const { t } = useLanguage()
   const [dismissed, setDismissed] = useState(false)
 
   if (isStandalone || dismissed) return null
@@ -45,11 +52,11 @@ function InstallBanner() {
   if (isIOS) {
     return (
       <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-start gap-3">
-        <img src="/nomnom-icon-bg.png" alt="" className="w-10 h-10 rounded-xl shrink-0" />
+        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">Add NomNom to Home Screen</p>
+          <p className="text-sm font-semibold text-stone-900">{t('installIosTitle')}</p>
           <p className="text-xs text-stone-500 mt-0.5">
-            Tap <span className="font-medium">Share</span> then <span className="font-medium">Add to Home Screen</span>
+            {t('installIosBody')} <span className="font-medium">{t('installIosShare')}</span>{t('installIosThen')} <span className="font-medium">{t('installIosAdd')}</span>
           </p>
         </div>
         <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0">×</button>
@@ -60,14 +67,14 @@ function InstallBanner() {
   if (deferredPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-center gap-3">
-        <img src="/nomnom-icon-bg.png" alt="" className="w-10 h-10 rounded-xl shrink-0" />
+        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">Install NomNom</p>
-          <p className="text-xs text-stone-500 mt-0.5">Add to your home screen</p>
+          <p className="text-sm font-semibold text-stone-900">{t('installTitle')}</p>
+          <p className="text-xs text-stone-500 mt-0.5">{t('installSubtitle')}</p>
         </div>
         <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0 mr-1">×</button>
         <button onClick={install} className="bg-primary text-stone-900 text-sm font-semibold px-4 py-1.5 rounded-xl shrink-0">
-          Install
+          {t('installButton')}
         </button>
       </div>
     )
@@ -76,16 +83,39 @@ function InstallBanner() {
   return null
 }
 
+function AppShell() {
+  const { token } = useAuth()
+  return (
+    <>
+      <Routes>
+        <Route path="/login"    element={token ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/register" element={token ? <Navigate to="/" replace /> : <SignUpPage />} />
+        {token ? (
+          <>
+            <Route path="/"             element={<DashboardPage />} />
+            <Route path="/planner"      element={<PlannerPage />} />
+            <Route path="/measurements" element={<MeasurementsPage />} />
+            <Route path="/profile"      element={<ProfilePage />} />
+            <Route path="*"             element={<Navigate to="/" replace />} />
+          </>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        )}
+      </Routes>
+      <InstallBanner />
+    </>
+  )
+}
+
 function App() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="text-center">
-        <img src="/nomnom-icon-no_bg.png" alt="NomNom" className="w-32 h-32 mx-auto mb-4" />
-        <h1 className="text-4xl font-bold text-stone-950 mb-1">NomNom</h1>
-        <p className="text-stone-500">Coming soon</p>
-      </div>
-      <InstallBanner />
-    </div>
+    <BrowserRouter>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
+      </LanguageProvider>
+    </BrowserRouter>
   )
 }
 

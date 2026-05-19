@@ -49,6 +49,8 @@ services:
       - /app/node_modules
     env_file:
       - .env
+    environment:
+      API_TARGET: http://backend-dev:8001
     depends_on:
       - backend-dev
 
