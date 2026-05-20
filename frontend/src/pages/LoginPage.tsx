@@ -302,20 +302,7 @@ export default function LoginPage() {
       <DesktopQRBanner open={showQR} onClose={() => { localStorage.setItem(DESKTOP_DISMISSED_KEY, '1'); setShowQR(false) }} />
       <InstallBanner />
       {/* Language toggle + QR trigger — top right */}
-      <div className="absolute top-4 right-4 flex items-center gap-2">
-        {isDesktop && (
-          <button
-            type="button"
-            onClick={() => setShowQR(true)}
-            aria-label="Show QR code"
-            className="text-lily/40 hover:text-lily/70 transition-colors cursor-pointer"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-              <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18v3h3M21 18v3"/>
-            </svg>
-          </button>
-        )}
+      <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
         <div className="flex gap-1 bg-lily/10 rounded-xl p-0.5">
           {(['pl', 'en'] as const).map(l => (
             <button
@@ -330,6 +317,19 @@ export default function LoginPage() {
             </button>
           ))}
         </div>
+        {isDesktop && (
+          <button
+            type="button"
+            onClick={() => setShowQR(true)}
+            aria-label="Show QR code"
+            className="text-lily/60 hover:text-lily transition-colors cursor-pointer"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18v3h3M21 18v3"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
