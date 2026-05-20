@@ -10,7 +10,7 @@ const APP_URL_QR = `${APP_URL}?ref=qr`
 const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
 
 function DesktopQRBanner() {
-  const { t } = useLanguage()
+  const { t, lang, setLang } = useLanguage()
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -39,6 +39,20 @@ function DesktopQRBanner() {
         >
           ×
         </button>
+
+        <div className="absolute top-4 left-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
+          {(['pl', 'en'] as const).map(l => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+              }`}
+            >
+              {l === 'pl' ? 'PL' : 'EN'}
+            </button>
+          ))}
+        </div>
 
         <img src={ICON_BG} alt="NomNom" className="w-16 h-16 rounded-2xl" />
 
