@@ -8,7 +8,7 @@ export const SMALL_ICON_PADDING          = '/nomnom/nomnom-icon-padding_small.pn
 export const SMALL_ICON_NO_BG            = '/nomnom/nomnom-icon-no_bg_small.png'
 export const SMALL_ICON_NO_BG_2          = '/nomnom/nomnom-icon-no_bg_2_small.png'
 
-// Icons - NomNom expressions / mood      / activities
+// Icons - NomNom expressions / mood / activities
 export const NOMNOM_404                  = '/nomnom/nomnom_404.png'
 export const NOMNOM_DRINKING_WATER       = '/nomnom/nomnom_drinking_water.png'
 export const NOMNOM_EATING_APPLE         = '/nomnom/nomnom_eating_apple.png'
@@ -33,7 +33,3 @@ export const NOMNOM_MEASURING_2          = '/nomnom/nomnom_measuring_2.png'
 export const NOMNOM_SMART_BOOK           = '/nomnom/nomnom_smart_book.png'
 export const NOMNOM_SMART_CHECKLIST      = '/nomnom/nomnom_smart_checklist.png'
 export const NOMNOM_THIRSTY              = '/nomnom/nomnom_thirsty.png'
-
-// Collages
-export const COLLAGE_1                   = '/collages/Gemini_Generated_Image_ceg1asceg1asceg1.png'
-export const COLLAGE_2                   = '/collages/Gemini_Generated_Image_loys2uloys2uloys.png'
