@@ -9,9 +9,14 @@ const APP_URL = 'https://fit.spryszynski.pl'
 const APP_URL_QR = `${APP_URL}?ref=qr`
 const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
 
-function DesktopQRBanner() {
+function DesktopQRBanner({ onReady }: { onReady?: (reopen: () => void) => void }) {
   const { t, lang, setLang } = useLanguage()
   const [show, setShow] = useState(false)
+
+  const reopen = () => {
+    localStorage.removeItem(DESKTOP_DISMISSED_KEY)
+    setShow(true)
+  }
 
   useEffect(() => {
     const isDesktop = window.matchMedia('(pointer: fine) and (min-width: 768px)').matches
@@ -20,6 +25,7 @@ function DesktopQRBanner() {
       ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
     const dismissed = localStorage.getItem(DESKTOP_DISMISSED_KEY) === '1'
     if (isDesktop && !isStandalone && !dismissed) setShow(true)
+    if (isDesktop && !isStandalone) onReady?.(reopen)
   }, [])
 
   const dismiss = () => {
@@ -275,6 +281,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [logoActive, setLogoActive] = useState(false)
   const [bouncing, setBouncing] = useState(false)
+  const [reopenQR, setReopenQR] = useState<(() => void) | null>(null)
 
   const handleTitleClick = () => {
     if (bouncing) return
@@ -302,7 +309,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
-      <DesktopQRBanner />
+      <DesktopQRBanner onReady={setReopenQR} />
       <InstallBanner />
       {/* Language toggle — top right */}
       <div className="absolute top-4 right-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
@@ -452,6 +459,20 @@ export default function LoginPage() {
         {optionToDisplay === 4 &&
           <SignUpExplanation />
         }
+
+        {reopenQR && (
+          <button
+            type="button"
+            onClick={reopenQR}
+            className="flex items-center gap-1.5 text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18v3h3M21 18v3"/>
+            </svg>
+            {t('desktopBannerTitle')}
+          </button>
+        )}
       </div>
     </div>
   )
