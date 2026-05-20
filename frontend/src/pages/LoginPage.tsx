@@ -325,7 +325,7 @@ export default function LoginPage() {
             aria-label="Show QR code"
             className="text-lily/60 hover:text-lily transition-colors cursor-pointer"
           >
-            <QrCode size={28} strokeWidth={1.75} />
+            <QrCode size={32} strokeWidth={1.75} />
           </button>
         )}
       </div>
