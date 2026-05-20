@@ -168,6 +168,11 @@ const pl = {
   calcActivityVery: 'Bardzo aktywny',
   calcActivityVeryDesc: 'codziennie lub praca fizyczna',
 
+  // ── Desktop QR banner ─────────────────────────────────────────────────────
+  desktopBannerTitle: 'Najlepsza na telefonie',
+  desktopBannerBody: 'Zeskanuj kod QR i otwórz NomNom na swoim smartfonie.',
+  desktopBannerContinue: 'Kontynuuj w przeglądarce →',
+
   // ── Install banner ────────────────────────────────────────────────────────
   installIosTitle: 'Dodaj NomNom do ekranu głównego',
   installIosBody: 'Kliknij',
@@ -370,6 +375,11 @@ const en: typeof pl = {
   calcActivityActiveDesc: '3-5 workouts per week',
   calcActivityVery: 'Very active',
   calcActivityVeryDesc: 'daily training or physical job',
+
+  // ── Desktop QR banner ─────────────────────────────────────────────────────
+  desktopBannerTitle: 'Best on mobile',
+  desktopBannerBody: 'Scan the QR code and open NomNom on your smartphone.',
+  desktopBannerContinue: 'Continue in browser →',
 
   // ── Install banner ────────────────────────────────────────────────────────
   installIosTitle: 'Add NomNom to your home screen',

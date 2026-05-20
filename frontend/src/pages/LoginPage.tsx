@@ -1,8 +1,73 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { SMALL_ICON_NO_BG, NOMNOM_SMILING, ICON_BG } from '../assets'
+
+const APP_URL = 'https://fit.spryszynski.pl'
+const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
+
+function DesktopQRBanner() {
+  const { t } = useLanguage()
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    const isDesktop = window.matchMedia('(pointer: fine) and (min-width: 768px)').matches
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
+    const dismissed = localStorage.getItem(DESKTOP_DISMISSED_KEY) === '1'
+    if (isDesktop && !isStandalone && !dismissed) setShow(true)
+  }, [])
+
+  const dismiss = () => {
+    localStorage.setItem(DESKTOP_DISMISSED_KEY, '1')
+    setShow(false)
+  }
+
+  if (!show) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/80 backdrop-blur-sm px-6">
+      <div className="bg-ivory rounded-3xl shadow-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full relative">
+        <button
+          onClick={dismiss}
+          aria-label="Close"
+          className="absolute top-4 right-4 text-lily/30 hover:text-lily/70 transition-colors text-2xl leading-none cursor-pointer"
+        >
+          ×
+        </button>
+
+        <img src={ICON_BG} alt="NomNom" className="w-16 h-16 rounded-2xl" />
+
+        <div className="text-center">
+          <h2 className="text-xl font-extrabold text-lily">{t('desktopBannerTitle')}</h2>
+          <p className="text-sm font-semibold text-lily/60 mt-1">{t('desktopBannerBody')}</p>
+        </div>
+
+        <div className="p-3 bg-white rounded-2xl shadow-inner">
+          <QRCodeSVG
+            value={APP_URL}
+            size={180}
+            bgColor="#ffffff"
+            fgColor="#7d3ed0"
+            level="M"
+          />
+        </div>
+
+        <p className="text-xs font-bold text-lily/40 tracking-wide">{APP_URL.replace('https://', '')}</p>
+
+        <button
+          onClick={dismiss}
+          className="text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer underline underline-offset-2"
+        >
+          {t('desktopBannerContinue')}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -222,6 +287,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
+      <DesktopQRBanner />
       <InstallBanner />
       {/* Language toggle — top right */}
       <div className="absolute top-4 right-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
