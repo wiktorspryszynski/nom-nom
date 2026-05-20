@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { SMALL_ICON_NO_BG, NOMNOM_SMILING, ICON_BG } from '../assets'
 
 const APP_URL = 'https://fit.spryszynski.pl'
+const APP_URL_QR = `${APP_URL}?ref=qr`
 const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
 
 function DesktopQRBanner() {
@@ -48,7 +49,7 @@ function DesktopQRBanner() {
 
         <div className="p-3 bg-white rounded-2xl shadow-inner">
           <QRCodeSVG
-            value={APP_URL}
+            value={APP_URL_QR}
             size={180}
             bgColor="#ffffff"
             fgColor="#7d3ed0"
