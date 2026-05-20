@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
+  html, body {
     background-color: var(--color-primary);
+    overscroll-behavior-x: none;
+    scrollbar-width: none;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
   }
 }
 

@@ -65,12 +65,12 @@ function WeightTrend() {
   )
 }
 
-type BmiCategory = { labelKey: 'bmiUnderweight' | 'bmiNormal' | 'bmiOverweight' | 'bmiObese'; color: string; range: [number, number] }
+type BmiCategory = { labelKey: 'bmiUnderweight' | 'bmiNormal' | 'bmiOverweight' | 'bmiObese'; color: string; range: [number, number]; w: number }
 const BMI_SCALE: BmiCategory[] = [
-  { labelKey: 'bmiUnderweight', color: '#3ec9a7', range: [0,    18.5] },
-  { labelKey: 'bmiNormal',      color: '#7d3ed0', range: [18.5, 25]   },
-  { labelKey: 'bmiOverweight',  color: '#f7a84a', range: [25,   30]   },
-  { labelKey: 'bmiObese',       color: '#ef4444', range: [30,   45]   },
+  { labelKey: 'bmiUnderweight', color: '#3ec9a7', range: [0,  20], w: 1   },
+  { labelKey: 'bmiNormal',      color: '#7d3ed0', range: [20, 25], w: 1.5 },
+  { labelKey: 'bmiOverweight',  color: '#f7a84a', range: [25, 30], w: 1.5 },
+  { labelKey: 'bmiObese',       color: '#ef4444', range: [30, 45], w: 1   },
 ]
 
 function getBmiCategory(bmi: number): BmiCategory {
@@ -83,8 +83,24 @@ function BmiCard({ weightKg }: { weightKg: number }) {
   const bmi = weightKg / (heightM * heightM)
   const category = getBmiCategory(bmi)
 
-  const MIN = 14, MAX = 42
-  const markerPct = Math.min(Math.max(((bmi - MIN) / (MAX - MIN)) * 100, 2), 98)
+  const totalW = BMI_SCALE.reduce((s, c) => s + c.w, 0)
+  const visualStarts = BMI_SCALE.reduce<number[]>((acc, _, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + (BMI_SCALE[i - 1].w / totalW) * 100)
+    return acc
+  }, [])
+
+  const bmiToMarkerPct = (v: number) => {
+    for (let i = 0; i < BMI_SCALE.length; i++) {
+      const c = BMI_SCALE[i]
+      if (v <= c.range[1] || i === BMI_SCALE.length - 1) {
+        const segEnd = visualStarts[i] + (c.w / totalW) * 100
+        const t = Math.min(Math.max((v - c.range[0]) / (c.range[1] - c.range[0]), 0), 1)
+        return visualStarts[i] + t * (segEnd - visualStarts[i])
+      }
+    }
+    return 98
+  }
+  const markerPct = Math.min(Math.max(bmiToMarkerPct(bmi), 2), 98)
 
   return (
     <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
@@ -106,15 +122,15 @@ function BmiCard({ weightKg }: { weightKg: number }) {
       <div className="relative mb-2">
         <div className="flex h-3 rounded-full overflow-hidden gap-px">
           {BMI_SCALE.map(c => (
-            <div key={c.labelKey} className="flex-1 h-full" style={{ backgroundColor: c.color + '55' }} />
+            <div key={c.labelKey} className="h-full" style={{ width: `${(c.w / totalW) * 100}%`, backgroundColor: c.color + '55' }} />
           ))}
         </div>
         <div className="absolute inset-0 flex h-3 rounded-full overflow-hidden gap-px pointer-events-none">
           {BMI_SCALE.map(c => (
             <div
               key={c.labelKey}
-              className="flex-1 h-full transition-opacity"
-              style={{ backgroundColor: c.color, opacity: c.labelKey === category.labelKey ? 1 : 0 }}
+              className="h-full transition-opacity"
+              style={{ width: `${(c.w / totalW) * 100}%`, backgroundColor: c.color, opacity: c.labelKey === category.labelKey ? 1 : 0 }}
             />
           ))}
         </div>
@@ -123,13 +139,16 @@ function BmiCard({ weightKg }: { weightKg: number }) {
           style={{ left: `calc(${markerPct}% - 8px)`, borderColor: category.color }}
         />
       </div>
-      <div className="flex justify-between">
-        {BMI_SCALE.map(c => (
-          <span key={c.labelKey} className="text-[9px] font-bold" style={{ color: c.color + '99' }}>
-            {c.range[0] || ''}
+      <div className="relative h-4">
+        {BMI_SCALE.slice(1).map((c, i) => (
+          <span
+            key={c.labelKey}
+            className="absolute text-[9px] font-bold -translate-x-1/2"
+            style={{ left: `${visualStarts[i + 1]}%`, color: c.color + '99' }}
+          >
+            {c.range[0]}
           </span>
         ))}
-        <span className="text-[9px] font-bold text-lily/20">30+</span>
       </div>
     </div>
   )
@@ -231,7 +250,15 @@ export default function MeasurementsPage() {
               .replace('{kg}', String(weightHistory[1].kg))
               .replace('{date}', weightHistory[1].date)}
             {' · '}
-            <span className="text-[#3ec9a7]">↓ {(weightHistory[1].kg - parseFloat(weight || '0')).toFixed(1)} kg</span>
+            {(() => {
+              const diff = parseFloat(weight || '0') - weightHistory[1].kg
+              const isDown = diff < 0
+              return (
+                <span className={isDown ? 'text-[#3ec9a7]' : 'text-red-400'}>
+                  {isDown ? '↓' : '↑'} {Math.abs(diff).toFixed(1)} kg
+                </span>
+              )
+            })()}
           </p>
         </div>
 

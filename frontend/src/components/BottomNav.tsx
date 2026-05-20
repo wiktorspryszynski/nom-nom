@@ -21,7 +21,7 @@ export default function BottomNav() {
             to={to}
             end
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors cursor-pointer ${
+              `flex flex-col items-center gap-0.5 px-4 pt-2 pb-4 rounded-xl transition-colors cursor-pointer ${
                 isActive ? 'text-lily' : 'text-lily/35'
               }`
             }
