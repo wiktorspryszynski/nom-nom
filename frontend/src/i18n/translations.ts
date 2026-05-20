@@ -181,6 +181,11 @@ const pl = {
   photoLogSaving: 'Zapisuję…',
   photoLogSave: 'Zapisz wpis',
   photoLogCancel: 'Anuluj',
+
+  // ── 404 ───────────────────────────────────────────────────────────────────
+  notFoundTitle: 'Strona nie istnieje',
+  notFoundBody: 'Wygląda na to, że NomNom zgubił się szukając przekąski.',
+  notFoundBack: 'Wróć do strony głównej',
 } as const
 
 const en: typeof pl = {
@@ -364,6 +369,11 @@ const en: typeof pl = {
   photoLogSaving: 'Saving…',
   photoLogSave: 'Save entry',
   photoLogCancel: 'Cancel',
+
+  // ── 404 ───────────────────────────────────────────────────────────────────
+  notFoundTitle: 'Page not found',
+  notFoundBody: 'Looks like NomNom got lost looking for a snack.',
+  notFoundBack: 'Go back home',
 }
 
 export const translations: Record<Lang, typeof pl> = { pl, en }

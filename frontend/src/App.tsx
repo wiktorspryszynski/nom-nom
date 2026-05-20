@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import PlannerPage from './pages/PlannerPage'
 import MeasurementsPage from './pages/MeasurementsPage'
 import ProfilePage from './pages/ProfilePage'
+import NotFoundPage from './pages/NotFoundPage'
 
 function AppShell() {
   const { token } = useAuth()
@@ -21,7 +22,7 @@ function AppShell() {
             <Route path="/planner"      element={<PlannerPage />} />
             <Route path="/measurements" element={<MeasurementsPage />} />
             <Route path="/profile"      element={<ProfilePage />} />
-            <Route path="*"             element={<Navigate to="/" replace />} />
+            <Route path="*"             element={<NotFoundPage />} />
           </>
         ) : (
           <Route path="*" element={<Navigate to="/login" replace />} />
