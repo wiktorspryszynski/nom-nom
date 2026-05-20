@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
+import { QrCode } from 'lucide-react'
 import { SMALL_ICON_NO_BG, NOMNOM_SMILING, ICON_BG } from '../assets'
 
 const APP_URL = 'https://fit.spryszynski.pl'
@@ -324,10 +325,7 @@ export default function LoginPage() {
             aria-label="Show QR code"
             className="text-lily/60 hover:text-lily transition-colors cursor-pointer"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-              <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18v3h3M21 18v3"/>
-            </svg>
+            <QrCode size={28} strokeWidth={1.75} />
           </button>
         )}
       </div>
