@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Scale, TrendingDown, TrendingUp, Minus, ChevronDown, ChevronUp, Ruler } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import { useLanguage } from '../context/LanguageContext'
+import { NOMNOM_EATING_APPLE } from '../assets'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const MOCK_HEIGHT_CM = 178
@@ -190,12 +191,13 @@ export default function MeasurementsPage() {
   return (
     <div className="min-h-dvh bg-white">
       {/* ── Header ── */}
-      <div className="bg-primary px-5 pt-14 pb-8">
+      <div className="bg-primary px-5 pt-14 pb-8 relative overflow-hidden">
         <h1 className="text-2xl font-extrabold text-lily mb-1">{t('measurementsTitle')}</h1>
         <p className="text-lily/60 text-sm font-semibold">{t('measurementsSubtitle')}</p>
+        <img src={NOMNOM_EATING_APPLE} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
       </div>
 
-      <div className="px-4 pb-28 space-y-4 -mt-4">
+      <div className="px-4 pb-28 space-y-4 mt-4 relative z-10">
         {/* ── Quick weight entry ── */}
         <div className="bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 p-5">
           <div className="flex items-center gap-2 mb-4">

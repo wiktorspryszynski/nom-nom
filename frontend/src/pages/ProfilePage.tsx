@@ -3,6 +3,7 @@ import { Target, LogOut, ChevronRight, Pencil, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
+import { NOMNOM_HAPPY } from '../assets'
 
 // ─── Mock user data ────────────────────────────────────────────────────────────
 const mockUser = { name: 'Wiktor', email: 'wiktor@spryszynski.pl' }
@@ -73,7 +74,8 @@ export default function ProfilePage() {
   return (
     <div className="min-h-dvh bg-white">
       {/* ── Header ── */}
-      <div className="bg-primary px-5 pt-14 pb-10">
+      <div className="bg-primary px-5 pt-14 pb-10 relative overflow-hidden">
+        <img src={NOMNOM_HAPPY} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
         <h1 className="text-2xl font-extrabold text-lily mb-6">{t('profileTitle')}</h1>
         <div className="flex items-center gap-4">
           <Avatar name={mockUser.name} />
@@ -84,7 +86,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="px-4 pb-28 space-y-4 -mt-4">
+      <div className="px-4 pb-28 space-y-4 mt-4 relative z-10">
         {/* ── Account info ── */}
         <div className="bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 px-4">
           <InfoRow label={t('profileName')}  value={mockUser.name} />

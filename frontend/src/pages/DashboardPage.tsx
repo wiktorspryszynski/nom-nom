@@ -6,6 +6,7 @@ import {
 import BottomNav from '../components/BottomNav'
 import PhotoLogSheet from '../components/PhotoLogSheet'
 import { useLanguage } from '../context/LanguageContext'
+import { NOMNOM_SMILING, NOMNOM_DRINKING_WATER } from '../assets'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const GOAL_KCAL = 2000
@@ -134,7 +135,8 @@ function WaterWidget() {
   const { t } = useLanguage()
   const [glasses, setGlasses] = useState(WATER_GLASSES)
   return (
-    <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
+    <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 relative overflow-hidden">
+      <img src={NOMNOM_DRINKING_WATER} alt="" aria-hidden className="absolute -right-2 -bottom-2 w-16 opacity-70 pointer-events-none select-none" />
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           <Droplet size={14} className="text-[#3ec9a7]" fill="#3ec9a7" />
@@ -144,7 +146,7 @@ function WaterWidget() {
           {t('dashboardWaterGlasses').replace('{glasses}', String(glasses)).replace('{goal}', String(WATER_GOAL))}
         </span>
       </div>
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 pr-10">
         {Array.from({ length: WATER_GOAL }).map((_, i) => (
           <button
             key={i}
@@ -228,12 +230,13 @@ export default function DashboardPage() {
   return (
     <div className="min-h-dvh bg-white">
       {/* ── Yellow header ── */}
-      <div className="bg-primary px-5 pt-14 pb-8">
+      <div className="bg-primary px-5 pt-14 pb-8 relative overflow-hidden">
         <p className="text-lily/60 text-xs font-bold uppercase tracking-widest mb-1">{todayLabel(lang)}</p>
         <h1 className="text-2xl font-extrabold text-lily">{t('dashboardGreeting')}</h1>
+        <img src={NOMNOM_SMILING} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
       </div>
 
-      <div className="px-4 pb-28 space-y-4 -mt-4">
+      <div className="px-4 pb-28 space-y-4 mt-4 relative z-10">
         {/* ── Calorie summary ── */}
         <div className="bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 p-5">
           <div className="flex items-center justify-between gap-4">
