@@ -35,7 +35,7 @@ const todayPlan = [
 ]
 
 const entries = [
-  { id: 1, type: 'food',     name: 'Owsianka z bananem', time: '08:15', kcal:  380 },
+  { id: 1, type: 'food',     name: 'Owsianka z bananem',   time: '08:15', kcal:  380 },
   { id: 2, type: 'exercise', name: 'Bieganie 30 min',     time: '09:00', kcal: -210 },
   { id: 3, type: 'food',     name: 'Kurczak z ryżem',     time: '13:00', kcal:  620 },
   { id: 4, type: 'food',     name: 'Jabłko',              time: '16:30', kcal:   80 },
@@ -47,17 +47,46 @@ function CalorieRing() {
   const { t } = useLanguage()
   const radius = 54
   const circumference = 2 * Math.PI * radius
-  const offset = circumference * (1 - Math.min(NET_KCAL / GOAL_KCAL, 1))
+
+  const isNegative = NET_KCAL < 0
+  const isExceeded = NET_KCAL > GOAL_KCAL
+
+  const mainOffset   = circumference * (1 - (isNegative ? 0 : Math.min(NET_KCAL / GOAL_KCAL, 1)))
+  const overflowOffset = circumference * (1 - Math.min((NET_KCAL - GOAL_KCAL) / GOAL_KCAL, 1))
+  const deficitOffset  = circumference * (1 - Math.min(Math.abs(NET_KCAL) / GOAL_KCAL, 1))
+
+  const centerColor = isNegative ? '#3ec9a7' : isExceeded ? '#f97316' : '#7d3ed0'
+  const centerText  = isNegative ? `+${Math.abs(NET_KCAL)}` : String(NET_KCAL)
+
+  const transition = { transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1)' }
+
   return (
     <div className="relative w-36 h-36 shrink-0">
-      <svg className="w-full h-full -rotate-90" viewBox="0 0 128 128">
+      {/* Counter-clockwise from top — background track + main purple arc */}
+      <svg className="absolute inset-0 w-full h-full" style={{ transform: 'rotate(90deg) scaleX(-1)' }} viewBox="0 0 128 128">
         <circle cx="64" cy="64" r={radius} fill="none" stroke="#7d3ed018" strokeWidth="12" />
         <circle cx="64" cy="64" r={radius} fill="none" stroke="#7d3ed0" strokeWidth="12"
-          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={mainOffset} style={transition} />
       </svg>
+
+      {/* Clockwise from top — teal deficit arc (NET < 0) */}
+      {isNegative && (
+        <svg className="absolute inset-0 w-full h-full" style={{ transform: 'rotate(-90deg)' }} viewBox="0 0 128 128">
+          <circle cx="64" cy="64" r={radius} fill="none" stroke="#3ec9a7" strokeWidth="8"
+            strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={deficitOffset} style={transition} />
+        </svg>
+      )}
+
+      {/* Clockwise from top — orange overflow arc (NET > GOAL) */}
+      {isExceeded && (
+        <svg className="absolute inset-0 w-full h-full" style={{ transform: 'rotate(-90deg)' }} viewBox="0 0 128 128">
+          <circle cx="64" cy="64" r={radius} fill="none" stroke="#f97316" strokeWidth="8"
+            strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={overflowOffset} style={transition} />
+        </svg>
+      )}
+
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-extrabold text-lily leading-none">{NET_KCAL}</span>
+        <span className="text-3xl font-extrabold leading-none" style={{ color: centerColor }}>{centerText}</span>
         <span className="text-[10px] font-bold text-lily/50 uppercase tracking-wider mt-0.5">{t('dashboardNetKcal')}</span>
       </div>
     </div>
@@ -292,26 +321,24 @@ export default function DashboardPage() {
 
           {/* ── Calorie summary — full width ── */}
           <div className="sm:col-span-2 bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 p-5">
-            <div className="flex items-center gap-5">
-              <CalorieRing />
-              <div className="flex-1 flex flex-col gap-2">
-                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5">
-                  <div className="w-7 h-7 bg-primary/50 rounded-lg flex items-center justify-center shrink-0">
-                    <Utensils size={13} className="text-lily" />
-                  </div>
-                  <span className="text-xs font-bold text-lily/60 flex-1">{t('dashboardConsumed')}</span>
-                  <span className="text-base font-extrabold text-lily">{CONSUMED_KCAL} <span className="text-xs font-bold text-lily/40">kcal</span></span>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                <CalorieRing />
+                <span className="text-[10px] font-bold text-lily/30">{t('dashboardDailyGoal')}: {GOAL_KCAL} kcal</span>
+              </div>
+              <div className="flex-1 flex flex-col gap-1">
+                <div className="flex items-center justify-between px-3 py-1">
+                  <span className="text-[10px] font-bold text-lily/40 uppercase tracking-wide">{t('dashboardConsumed')}</span>
+                  <span className="text-2xl font-extrabold text-[#f7a84a] leading-none">{CONSUMED_KCAL} <span className="text-xs font-bold text-[#f7a84a]/50">kcal</span></span>
                 </div>
-                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5">
-                  <div className="w-7 h-7 bg-[#3ec9a7]/15 rounded-lg flex items-center justify-center shrink-0">
-                    <Flame size={13} className="text-[#3ec9a7]" />
-                  </div>
-                  <span className="text-xs font-bold text-lily/60 flex-1">{t('dashboardBurned')}</span>
-                  <span className="text-base font-extrabold text-[#3ec9a7]">−{BURNED_KCAL} <span className="text-xs font-bold text-[#3ec9a7]/60">kcal</span></span>
+                <div className="flex items-center justify-between px-3 py-1">
+                  <span className="text-[10px] font-bold text-lily/40 uppercase tracking-wide">{t('dashboardBurned')}</span>
+                  <span className="text-2xl font-extrabold text-[#3ec9a7] leading-none">-{BURNED_KCAL} <span className="text-xs font-bold text-[#3ec9a7]/35">kcal</span></span>
                 </div>
-                <div className="bg-lily rounded-xl px-3 py-2.5 flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-primary/70 uppercase tracking-wide">{t('dashboardRemaining')}</span>
-                  <span className="text-lg font-extrabold text-primary">{GOAL_KCAL - NET_KCAL} <span className="text-xs font-bold text-primary/60">kcal</span></span>
+                <div className="h-px bg-lily/15 my-1" />
+                <div className="flex items-center justify-between bg-primary/40 rounded-xl px-3 py-2">
+                  <span className="text-[10px] font-extrabold text-lily/50 uppercase tracking-wide">{t('dashboardRemaining')}</span>
+                  <span className="text-3xl font-extrabold leading-none" style={{ color: GOAL_KCAL - NET_KCAL > 200 ? '#3ec9a7' : GOAL_KCAL - NET_KCAL > 0 ? '#f7a84a' : '#f97316' }}>{GOAL_KCAL - NET_KCAL} <span className="text-xs font-bold" style={{ opacity: 0.4 }}>kcal</span></span>
                 </div>
               </div>
             </div>
