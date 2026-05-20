@@ -26,8 +26,8 @@ function DesktopQRBanner({ open, onClose }: { open: boolean; onClose: () => void
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#fde68a] px-6">
-      <div className="bg-ivory rounded-3xl shadow-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary px-6">
+      <div className="bg-[#fde68a] rounded-3xl shadow-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full relative">
         <button
           onClick={onClose}
           aria-label="Close"
