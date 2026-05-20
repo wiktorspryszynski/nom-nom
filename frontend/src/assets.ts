@@ -27,3 +27,13 @@ export const NOMNOM_MEASURING            = '/nomnom/nomnom_measuring.png'
 export const NOMNOM_WEIGHING             = '/nomnom/nomnom_weighing.png'
 export const NOMNOM_BEHIND               = '/nomnom/nomnom_behind_2.png'
 export const NOMNOM_BEHIND_QUESTION      = '/nomnom/nomnom_behind_question_mark_2.png'
+export const NOMNOM_HOLDING_WATER_BOTTLE           = '/nomnom/nomnom_holding_water_bottle.png'
+export const NOMNOM_HOLDING_WATER_BOTTLE_THUMBS_UP = '/nomnom/nomnom_holding_water_bottle_thumbs_up.png'
+export const NOMNOM_MEASURING_2          = '/nomnom/nomnom_measuring_2.png'
+export const NOMNOM_SMART_BOOK           = '/nomnom/nomnom_smart_book.png'
+export const NOMNOM_SMART_CHECKLIST      = '/nomnom/nomnom_smart_checklist.png'
+export const NOMNOM_THIRSTY              = '/nomnom/nomnom_thirsty.png'
+
+// Collages
+export const COLLAGE_1                   = '/collages/Gemini_Generated_Image_ceg1asceg1asceg1.png'
+export const COLLAGE_2                   = '/collages/Gemini_Generated_Image_loys2uloys2uloys.png'
