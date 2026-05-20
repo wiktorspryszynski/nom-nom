@@ -9,37 +9,26 @@ const APP_URL = 'https://fit.spryszynski.pl'
 const APP_URL_QR = `${APP_URL}?ref=qr`
 const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
 
-function DesktopQRBanner({ onReady }: { onReady?: (reopen: () => void) => void }) {
-  const { t, lang, setLang } = useLanguage()
-  const [show, setShow] = useState(false)
-
-  const reopen = () => {
-    localStorage.removeItem(DESKTOP_DISMISSED_KEY)
-    setShow(true)
-  }
-
-  useEffect(() => {
-    const isDesktop = window.matchMedia('(pointer: fine) and (min-width: 768px)').matches
+function useIsDesktop() {
+  const [isDesktop] = useState(() => {
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
-    const dismissed = localStorage.getItem(DESKTOP_DISMISSED_KEY) === '1'
-    if (isDesktop && !isStandalone && !dismissed) setShow(true)
-    if (isDesktop && !isStandalone) onReady?.(reopen)
-  }, [])
+    return window.matchMedia('(pointer: fine) and (min-width: 768px)').matches && !isStandalone
+  })
+  return isDesktop
+}
 
-  const dismiss = () => {
-    localStorage.setItem(DESKTOP_DISMISSED_KEY, '1')
-    setShow(false)
-  }
+function DesktopQRBanner({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t, lang, setLang } = useLanguage()
 
-  if (!show) return null
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#fde68a] px-6">
       <div className="bg-ivory rounded-3xl shadow-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full relative">
         <button
-          onClick={dismiss}
+          onClick={onClose}
           aria-label="Close"
           className="absolute top-4 right-4 text-lily/30 hover:text-lily/70 transition-colors text-2xl leading-none cursor-pointer"
         >
@@ -80,7 +69,7 @@ function DesktopQRBanner({ onReady }: { onReady?: (reopen: () => void) => void }
         <p className="text-xs font-bold text-lily/40 tracking-wide">{APP_URL.replace('https://', '')}</p>
 
         <button
-          onClick={dismiss}
+          onClick={onClose}
           className="text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer underline underline-offset-2"
         >
           {t('desktopBannerContinue')}
@@ -281,7 +270,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [logoActive, setLogoActive] = useState(false)
   const [bouncing, setBouncing] = useState(false)
-  const [reopenQR, setReopenQR] = useState<(() => void) | null>(null)
+  const isDesktop = useIsDesktop()
+  const [showQR, setShowQR] = useState(() => isDesktop && localStorage.getItem(DESKTOP_DISMISSED_KEY) !== '1')
 
   const handleTitleClick = () => {
     if (bouncing) return
@@ -309,22 +299,37 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
-      <DesktopQRBanner onReady={setReopenQR} />
+      <DesktopQRBanner open={showQR} onClose={() => { localStorage.setItem(DESKTOP_DISMISSED_KEY, '1'); setShowQR(false) }} />
       <InstallBanner />
-      {/* Language toggle — top right */}
-      <div className="absolute top-4 right-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
-        {(['pl', 'en'] as const).map(l => (
+      {/* Language toggle + QR trigger — top right */}
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        {isDesktop && (
           <button
-            key={l}
             type="button"
-            onClick={() => setLang(l)}
-            className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
-              lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
-            }`}
+            onClick={() => setShowQR(true)}
+            aria-label="Show QR code"
+            className="text-lily/40 hover:text-lily/70 transition-colors cursor-pointer"
           >
-            {l === 'pl' ? 'PL' : 'EN'}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18v3h3M21 18v3"/>
+            </svg>
           </button>
-        ))}
+        )}
+        <div className="flex gap-1 bg-lily/10 rounded-xl p-0.5">
+          {(['pl', 'en'] as const).map(l => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+              }`}
+            >
+              {l === 'pl' ? 'PL' : 'EN'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
@@ -460,19 +465,7 @@ export default function LoginPage() {
           <SignUpExplanation />
         }
 
-        {reopenQR && (
-          <button
-            type="button"
-            onClick={reopenQR}
-            className="flex items-center gap-1.5 text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-              <path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18v3h3M21 18v3"/>
-            </svg>
-            {t('desktopBannerTitle')}
-          </button>
-        )}
+
       </div>
     </div>
   )
