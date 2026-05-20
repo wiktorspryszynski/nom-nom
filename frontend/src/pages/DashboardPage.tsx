@@ -6,7 +6,7 @@ import {
 import BottomNav from '../components/BottomNav'
 import PhotoLogSheet from '../components/PhotoLogSheet'
 import { useLanguage } from '../context/LanguageContext'
-import { NOMNOM_SMILING, NOMNOM_DRINKING_WATER } from '../assets'
+import { NOMNOM_SMILING, NOMNOM_DRINKING_WATER, NOMNOM_EXCERCISE_AND_SNACK, NOMNOM_EXCERCISING } from '../assets'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const GOAL_KCAL = 2000
@@ -81,7 +81,8 @@ function QuickLogWidget({ onCamera }: { onCamera: () => void }) {
   const [mode, setMode] = useState<'food' | 'exercise'>('food')
   const [text, setText] = useState('')
   return (
-    <div className="bg-ivory rounded-2xl border-[3px] border-lily p-4 space-y-3">
+    <div className="bg-ivory rounded-2xl border-[3px] border-lily p-4 space-y-3 relative overflow-hidden">
+      <img src={NOMNOM_EXCERCISE_AND_SNACK} alt="" aria-hidden className="absolute -right-2 -bottom-2 w-20 opacity-60 pointer-events-none select-none" />
       <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('dashboardQuickLog')}</h2>
       <div className="flex gap-2">
         <button
@@ -291,7 +292,10 @@ export default function DashboardPage() {
         {/* ── Log entries ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
+            <div className="flex items-center gap-2">
+              <img src={NOMNOM_EXCERCISING} alt="" aria-hidden className="w-7 h-7 object-contain pointer-events-none select-none" />
+              <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
+            </div>
             <button className="flex items-center gap-0.5 text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer">
               {t('dashboardAllEntries')} <ChevronRight size={13} />
             </button>

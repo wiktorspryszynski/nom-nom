@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Scale, TrendingDown, TrendingUp, Minus, ChevronDown, ChevronUp, Ruler } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import { useLanguage } from '../context/LanguageContext'
-import { NOMNOM_EATING_APPLE } from '../assets'
+import { NOMNOM_WEIGHING, NOMNOM_MEASURING } from '../assets'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const MOCK_HEIGHT_CM = 178
@@ -148,7 +148,10 @@ function BodyMetricsForm() {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-4 cursor-pointer"
       >
-        <span className="text-sm font-extrabold text-lily">{t('measurementsBodyComposition')}</span>
+        <div className="flex items-center gap-2">
+          <img src={NOMNOM_MEASURING} alt="" aria-hidden className="w-8 h-8 object-contain pointer-events-none select-none" />
+          <span className="text-sm font-extrabold text-lily">{t('measurementsBodyComposition')}</span>
+        </div>
         {open ? <ChevronUp size={16} className="text-lily/50" /> : <ChevronDown size={16} className="text-lily/50" />}
       </button>
 
@@ -194,7 +197,7 @@ export default function MeasurementsPage() {
       <div className="bg-primary px-5 pt-14 pb-8 relative overflow-hidden">
         <h1 className="text-2xl font-extrabold text-lily mb-1">{t('measurementsTitle')}</h1>
         <p className="text-lily/60 text-sm font-semibold">{t('measurementsSubtitle')}</p>
-        <img src={NOMNOM_EATING_APPLE} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
+        <img src={NOMNOM_WEIGHING} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
       </div>
 
       <div className="px-4 pb-28 space-y-4 mt-4 relative z-10">

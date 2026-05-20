@@ -1,87 +1,12 @@
-import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { LanguageProvider, useLanguage } from './context/LanguageContext'
+import { LanguageProvider } from './context/LanguageContext'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
 import PlannerPage from './pages/PlannerPage'
 import MeasurementsPage from './pages/MeasurementsPage'
 import ProfilePage from './pages/ProfilePage'
-import { ICON_BG } from './assets'
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
-function useInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isIOS] = useState(() => /iPhone|iPad|iPod/.test(navigator.userAgent))
-  const [isStandalone] = useState(() =>
-    window.matchMedia('(display-mode: standalone)').matches ||
-    ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
-  )
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  const install = async () => {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') setDeferredPrompt(null)
-  }
-
-  return { deferredPrompt, isIOS, isStandalone, install }
-}
-
-function InstallBanner() {
-  const { deferredPrompt, isIOS, isStandalone, install } = useInstallPrompt()
-  const { t } = useLanguage()
-  const [dismissed, setDismissed] = useState(false)
-
-  if (isStandalone || dismissed) return null
-
-  if (isIOS) {
-    return (
-      <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-start gap-3">
-        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">{t('installIosTitle')}</p>
-          <p className="text-xs text-stone-500 mt-0.5">
-            {t('installIosBody')} <span className="font-medium">{t('installIosShare')}</span>{t('installIosThen')} <span className="font-medium">{t('installIosAdd')}</span>
-          </p>
-        </div>
-        <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0">×</button>
-      </div>
-    )
-  }
-
-  if (deferredPrompt) {
-    return (
-      <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-center gap-3">
-        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">{t('installTitle')}</p>
-          <p className="text-xs text-stone-500 mt-0.5">{t('installSubtitle')}</p>
-        </div>
-        <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0 mr-1">×</button>
-        <button onClick={install} className="bg-primary text-stone-900 text-sm font-semibold px-4 py-1.5 rounded-xl shrink-0">
-          {t('installButton')}
-        </button>
-      </div>
-    )
-  }
-
-  return null
-}
 
 function AppShell() {
   const { token } = useAuth()
@@ -102,7 +27,6 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         )}
       </Routes>
-      <InstallBanner />
     </>
   )
 }
