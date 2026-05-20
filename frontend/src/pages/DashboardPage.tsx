@@ -1,12 +1,18 @@
 import { useRef, useState } from 'react'
 import {
   Utensils, Dumbbell, ChevronRight, Flame, Droplets, Beef,
-  Droplet, Send, CalendarDays, Camera,
+  Send, CalendarDays, Camera,
 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import PhotoLogSheet from '../components/PhotoLogSheet'
 import { useLanguage } from '../context/LanguageContext'
-import { NOMNOM_SMILING, NOMNOM_DRINKING_WATER, NOMNOM_EXCERCISE_AND_SNACK, NOMNOM_EXCERCISING } from '../assets'
+import {
+  NOMNOM_SMILING, NOMNOM_HAPPY, NOMNOM_SLIGHT_SMILE,
+  NOMNOM_BEHIND, NOMNOM_BEHIND_QUESTION,
+  NOMNOM_DRINKING_WATER, NOMNOM_EXCERCISE_AND_SNACK, NOMNOM_EXCERCISING,
+} from '../assets'
+
+const HEADER_ICONS = [NOMNOM_SMILING, NOMNOM_HAPPY, NOMNOM_SLIGHT_SMILE]
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const GOAL_KCAL = 2000
@@ -81,9 +87,11 @@ function QuickLogWidget({ onCamera }: { onCamera: () => void }) {
   const [mode, setMode] = useState<'food' | 'exercise'>('food')
   const [text, setText] = useState('')
   return (
-    <div className="bg-ivory rounded-2xl border-[3px] border-lily p-4 space-y-3 relative overflow-hidden">
-      <img src={NOMNOM_EXCERCISE_AND_SNACK} alt="" aria-hidden className="absolute -right-2 -bottom-2 w-20 opacity-60 pointer-events-none select-none" />
-      <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('dashboardQuickLog')}</h2>
+    <div className="bg-ivory rounded-2xl border-[3px] border-lily p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <img src={NOMNOM_EXCERCISE_AND_SNACK} alt="" aria-hidden className="w-8 h-8 object-contain pointer-events-none select-none" />
+        <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('dashboardQuickLog')}</h2>
+      </div>
       <div className="flex gap-2">
         <button
           onClick={() => setMode('food')}
@@ -113,9 +121,13 @@ function QuickLogWidget({ onCamera }: { onCamera: () => void }) {
                      px-3 py-2.5 text-sm font-semibold outline-none focus:border-lily/60 transition-colors"
         />
         <button
-          onClick={onCamera}
-          className="w-11 h-11 bg-white border-[2px] border-lily/30 rounded-xl flex items-center justify-center shrink-0
-                     hover:border-lily/60 active:scale-95 transition-all cursor-pointer"
+          onClick={mode === 'food' ? onCamera : undefined}
+          disabled={mode === 'exercise'}
+          className={`w-11 h-11 bg-white border-[2px] rounded-xl flex items-center justify-center shrink-0 transition-all ${
+            mode === 'exercise'
+              ? 'border-lily/10 opacity-30 cursor-not-allowed'
+              : 'border-lily/30 hover:border-lily/60 active:scale-95 cursor-pointer'
+          }`}
           aria-label={t('dashboardAddPhoto')}
         >
           <Camera size={17} className="text-lily/60" />
@@ -132,32 +144,52 @@ function QuickLogWidget({ onCamera }: { onCamera: () => void }) {
   )
 }
 
+function glassColor(glasses: number): string {
+  if (glasses <= 2) return '#f97316'
+  if (glasses <= 4) return '#f7a84a'
+  if (glasses <= 6) return '#3ec9a7'
+  return '#3b82f6'
+}
+
 function WaterWidget() {
   const { t } = useLanguage()
   const [glasses, setGlasses] = useState(WATER_GLASSES)
+  const color = glassColor(glasses)
   return (
-    <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 relative overflow-hidden">
-      <img src={NOMNOM_DRINKING_WATER} alt="" aria-hidden className="absolute -right-2 -bottom-2 w-16 opacity-70 pointer-events-none select-none" />
+    <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
-          <Droplet size={14} className="text-[#3ec9a7]" fill="#3ec9a7" />
+          <img src={NOMNOM_DRINKING_WATER} alt="" aria-hidden className="w-8 h-8 object-contain pointer-events-none select-none" />
           <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('dashboardWater')}</h2>
         </div>
         <span className="text-xs font-bold text-lily/40">
           {t('dashboardWaterGlasses').replace('{glasses}', String(glasses)).replace('{goal}', String(WATER_GOAL))}
         </span>
       </div>
-      <div className="flex gap-1.5 pr-10">
-        {Array.from({ length: WATER_GOAL }).map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setGlasses(i < glasses ? i : i + 1)}
-            className={`flex-1 h-7 rounded-lg transition-colors cursor-pointer ${
-              i < glasses ? 'bg-[#3ec9a7]' : 'bg-lily/10'
-            }`}
-            aria-label={t('dashboardWaterGlass').replace('{n}', String(i + 1))}
-          />
-        ))}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setGlasses(g => Math.max(0, g - 1))}
+          disabled={glasses === 0}
+          className="w-8 h-8 rounded-lg bg-lily/8 flex items-center justify-center text-lily font-extrabold text-base shrink-0
+                     cursor-pointer active:scale-95 transition-transform disabled:opacity-25 disabled:cursor-default"
+        >−</button>
+        <div className="flex-1 flex gap-1">
+          {Array.from({ length: WATER_GOAL }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setGlasses(i < glasses ? i : i + 1)}
+              style={{ backgroundColor: i < glasses ? color : undefined }}
+              className={`flex-1 h-7 rounded-lg transition-colors cursor-pointer ${i < glasses ? '' : 'bg-lily/10'}`}
+              aria-label={t('dashboardWaterGlass').replace('{n}', String(i + 1))}
+            />
+          ))}
+        </div>
+        <button
+          onClick={() => setGlasses(g => Math.min(WATER_GOAL, g + 1))}
+          disabled={glasses === WATER_GOAL}
+          className="w-8 h-8 rounded-lg bg-lily/8 flex items-center justify-center text-lily font-extrabold text-base shrink-0
+                     cursor-pointer active:scale-95 transition-transform disabled:opacity-25 disabled:cursor-default"
+        >+</button>
       </div>
     </div>
   )
@@ -220,6 +252,19 @@ export default function DashboardPage() {
   const { t, lang } = useLanguage()
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [headerIcon] = useState(() => HEADER_ICONS[Math.floor(Math.random() * HEADER_ICONS.length)])
+  const [nomState, setNomState] = useState<'default' | 'behind' | 'behind_question'>('default')
+
+  const handleNomClick = () => {
+    if (nomState !== 'default') return
+    setNomState('behind')
+    setTimeout(() => setNomState('behind_question'), 1500)
+    setTimeout(() => setNomState('default'), 3500)
+  }
+
+  const currentHeaderIcon = nomState === 'behind' ? NOMNOM_BEHIND
+    : nomState === 'behind_question' ? NOMNOM_BEHIND_QUESTION
+    : headerIcon
 
   const handleCameraClick = () => fileInputRef.current?.click()
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,75 +279,81 @@ export default function DashboardPage() {
       <div className="bg-primary px-5 pt-14 pb-8 relative overflow-hidden">
         <p className="text-lily/60 text-xs font-bold uppercase tracking-widest mb-1">{todayLabel(lang)}</p>
         <h1 className="text-2xl font-extrabold text-lily">{t('dashboardGreeting')}</h1>
-        <img src={NOMNOM_SMILING} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
+        <img
+          src={currentHeaderIcon}
+          alt=""
+          onClick={handleNomClick}
+          className="absolute bottom-0 right-2 w-24 select-none cursor-pointer transition-transform duration-200 active:scale-95"
+        />
       </div>
 
-      <div className="px-4 pb-28 space-y-4 mt-4 relative z-10">
-        {/* ── Calorie summary ── */}
-        <div className="bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 p-5">
-          <div className="flex items-center justify-between gap-4">
-            <CalorieRing />
-            <div className="flex-1 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Utensils size={13} className="text-lily/50" />
-                  <span className="text-xs font-bold text-lily/60">{t('dashboardConsumed')}</span>
+      <div className="pb-28 mt-4 relative z-10">
+        <div className="max-w-2xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* ── Calorie summary — full width ── */}
+          <div className="sm:col-span-2 bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 p-5">
+            <div className="flex items-center gap-5">
+              <CalorieRing />
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5">
+                  <div className="w-7 h-7 bg-primary/50 rounded-lg flex items-center justify-center shrink-0">
+                    <Utensils size={13} className="text-lily" />
+                  </div>
+                  <span className="text-xs font-bold text-lily/60 flex-1">{t('dashboardConsumed')}</span>
+                  <span className="text-base font-extrabold text-lily">{CONSUMED_KCAL} <span className="text-xs font-bold text-lily/40">kcal</span></span>
                 </div>
-                <span className="text-sm font-extrabold text-lily">{CONSUMED_KCAL} kcal</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Flame size={13} className="text-[#3ec9a7]" />
-                  <span className="text-xs font-bold text-lily/60">{t('dashboardBurned')}</span>
+                <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5">
+                  <div className="w-7 h-7 bg-[#3ec9a7]/15 rounded-lg flex items-center justify-center shrink-0">
+                    <Flame size={13} className="text-[#3ec9a7]" />
+                  </div>
+                  <span className="text-xs font-bold text-lily/60 flex-1">{t('dashboardBurned')}</span>
+                  <span className="text-base font-extrabold text-[#3ec9a7]">−{BURNED_KCAL} <span className="text-xs font-bold text-[#3ec9a7]/60">kcal</span></span>
                 </div>
-                <span className="text-sm font-extrabold text-[#3ec9a7]">−{BURNED_KCAL} kcal</span>
-              </div>
-              <div className="h-px bg-lily/10" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-lily/50">{t('dashboardDailyGoal')}</span>
-                <span className="text-sm font-extrabold text-lily/50">{GOAL_KCAL} kcal</span>
-              </div>
-              <div className="bg-primary/40 rounded-xl px-3 py-1.5 flex items-center justify-between">
-                <span className="text-xs font-bold text-lily">{t('dashboardRemaining')}</span>
-                <span className="text-sm font-extrabold text-lily">{GOAL_KCAL - NET_KCAL} kcal</span>
+                <div className="bg-lily rounded-xl px-3 py-2.5 flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-primary/70 uppercase tracking-wide">{t('dashboardRemaining')}</span>
+                  <span className="text-lg font-extrabold text-primary">{GOAL_KCAL - NET_KCAL} <span className="text-xs font-bold text-primary/60">kcal</span></span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ── Macros ── */}
-        <div className="bg-white rounded-2xl shadow-md border-[2px] border-lily/15 p-5">
-          <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest mb-4">{t('dashboardMacros')}</h2>
-          <div className="space-y-3.5">
-            <MacroBar label={t('dashboardProtein')} eaten={macros.protein.eaten} goal={macros.protein.goal} color={macros.protein.color} icon={Beef} />
-            <MacroBar label={t('dashboardFat')}     eaten={macros.fat.eaten}     goal={macros.fat.goal}     color={macros.fat.color}     icon={Droplets} />
-            <MacroBar label={t('dashboardCarbs')}   eaten={macros.carbs.eaten}   goal={macros.carbs.goal}   color={macros.carbs.color}   icon={Flame} />
-          </div>
-        </div>
-
-        {/* ── Quick log widget ── */}
-        <QuickLogWidget onCamera={handleCameraClick} />
-
-        {/* ── Water ── */}
-        <WaterWidget />
-
-        {/* ── Today's plan ── */}
-        <TodayPlanWidget />
-
-        {/* ── Log entries ── */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <img src={NOMNOM_EXCERCISING} alt="" aria-hidden className="w-7 h-7 object-contain pointer-events-none select-none" />
-              <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
+          {/* ── Macros — col 1 ── */}
+          <div className="bg-white rounded-2xl shadow-md border-[2px] border-lily/15 p-5">
+            <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest mb-4">{t('dashboardMacros')}</h2>
+            <div className="space-y-3.5">
+              <MacroBar label={t('dashboardProtein')} eaten={macros.protein.eaten} goal={macros.protein.goal} color={macros.protein.color} icon={Beef} />
+              <MacroBar label={t('dashboardFat')}     eaten={macros.fat.eaten}     goal={macros.fat.goal}     color={macros.fat.color}     icon={Droplets} />
+              <MacroBar label={t('dashboardCarbs')}   eaten={macros.carbs.eaten}   goal={macros.carbs.goal}   color={macros.carbs.color}   icon={Flame} />
             </div>
-            <button className="flex items-center gap-0.5 text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer">
-              {t('dashboardAllEntries')} <ChevronRight size={13} />
-            </button>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border-[2px] border-lily/15 px-4">
-            {entries.map(e => <EntryRow key={e.id} entry={e} />)}
+
+          {/* ── Water — col 2 ── */}
+          <WaterWidget />
+
+          {/* ── Quick log — full width ── */}
+          <div className="sm:col-span-2">
+            <QuickLogWidget onCamera={handleCameraClick} />
           </div>
+
+          {/* ── Today's plan — col 1 ── */}
+          <TodayPlanWidget />
+
+          {/* ── Log entries — col 2 ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <img src={NOMNOM_EXCERCISING} alt="" aria-hidden className="w-7 h-7 object-contain pointer-events-none select-none" />
+                <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
+              </div>
+              <button className="flex items-center gap-0.5 text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer">
+                {t('dashboardAllEntries')} <ChevronRight size={13} />
+              </button>
+            </div>
+            <div className="bg-white rounded-2xl shadow-md border-[2px] border-lily/15 px-4">
+              {entries.map(e => <EntryRow key={e.id} entry={e} />)}
+            </div>
+          </div>
+
         </div>
       </div>
 
