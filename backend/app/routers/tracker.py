@@ -3,6 +3,7 @@ import json
 
 import anthropic
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -11,6 +12,10 @@ from app.models.user import User
 from app.routers.auth import get_current_user
 
 router = APIRouter()
+
+
+class TextLogRequest(BaseModel):
+    text: str
 
 _VISION_PROMPT = (
     "Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
@@ -38,10 +43,51 @@ def get_logs(db: Session = Depends(get_db), current_user: User = Depends(get_cur
     return []
 
 
+_TEXT_PROMPT = (
+    "Analyze this food or exercise description. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
+    '{"name":"short Polish name (max 4 words)","description":"one Polish sentence",'
+    '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
+    "For exercise entries set protein/fat/carbs to 0 and kcal to calories burned (negative is fine for the display).\n"
+    "If you cannot parse this as food or exercise return:\n"
+    '{"error":"Nie rozpoznano posiłku ani aktywności"}'
+)
+
+_DEMO_TEXT_RESULT = {
+    "name": "Przykładowy posiłek",
+    "description": "To są przykładowe dane — ustaw ANTHROPIC_API_KEY aby używać analizy tekstu.",
+    "kcal": 350,
+    "protein": 15.0,
+    "fat": 10.0,
+    "carbs": 45.0,
+    "confidence": 0.0,
+}
+
+
 @router.post("/log/text")
-def log_text(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # TODO: Claude Haiku → structured data → Nutrition API
-    return {"message": "not implemented"}
+def log_text(
+    body: TextLogRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not settings.anthropic_api_key:
+        return _DEMO_TEXT_RESULT
+
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=256,
+        messages=[{"role": "user", "content": f"{_TEXT_PROMPT}\n\nEntry: {body.text}"}],
+    )
+
+    try:
+        result = json.loads(message.content[0].text)
+    except (json.JSONDecodeError, IndexError):
+        raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
+
+    if "error" in result:
+        raise HTTPException(status_code=422, detail=result["error"])
+
+    return result
 
 
 @router.post("/log/photo")

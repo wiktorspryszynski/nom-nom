@@ -157,6 +157,7 @@ function BodyMetricsForm() {
 
       {open && (
         <div className="px-4 pb-4 space-y-3 border-t border-lily/10">
+          <p className="text-xs font-semibold text-lily/35 pt-1">{t('measurementsBodyCompositionHint')}</p>
           {[
             { label: t('measurementsBodyFat'), unit: '%', val: fat, set: setFat },
             { label: t('measurementsWater'),   unit: '%', val: water, set: setWater },
