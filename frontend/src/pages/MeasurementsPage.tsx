@@ -277,12 +277,10 @@ export default function MeasurementsPage() {
                 <div key={entry.date} className="flex items-center justify-between py-3 border-b border-lily/10 last:border-0">
                   <span className="text-sm font-bold text-lily/60">{entry.date}</span>
                   <div className="flex items-center gap-3">
-                    {diff !== null && (
-                      <span className={`text-xs font-extrabold ${diff < 0 ? 'text-[#3ec9a7]' : 'text-red-400'}`}>
-                        {diff > 0 ? '+' : ''}{diff.toFixed(1)} kg
-                      </span>
-                    )}
-                    <span className="text-sm font-extrabold text-lily">{entry.kg} kg</span>
+                    <span className={`text-xs font-extrabold w-14 text-right ${diff === null ? '' : diff < 0 ? 'text-[#3ec9a7]' : 'text-red-400'}`}>
+                      {diff !== null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg` : ''}
+                    </span>
+                    <span className="text-sm font-extrabold text-lily w-16 text-right">{entry.kg} kg</span>
                   </div>
                 </div>
               )
