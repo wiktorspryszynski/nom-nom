@@ -175,10 +175,10 @@ const pl = {
 
   // ── Install banner ────────────────────────────────────────────────────────
   installIosTitle: 'Dodaj NomNom do ekranu głównego',
-  installIosBody: 'Kliknij',
-  installIosShare: 'Udostępnij',
-  installIosThen: ', a następnie',
-  installIosAdd: 'Dodaj do ekranu głównego',
+  installIosStep1: 'Naciśnij ikonę Udostępnij',
+  installIosStep1Sub: 'na dole paska narzędzi Safari',
+  installIosStep2: 'Naciśnij „Dodaj do ekranu głównego"',
+  installIosDone: 'Rozumiem!',
   installTitle: 'Zainstaluj NomNom',
   installSubtitle: 'Dodaj do ekranu głównego',
   installButton: 'Zainstaluj',
@@ -383,10 +383,10 @@ const en: typeof pl = {
 
   // ── Install banner ────────────────────────────────────────────────────────
   installIosTitle: 'Add NomNom to your home screen',
-  installIosBody: 'Tap',
-  installIosShare: 'Share',
-  installIosThen: ', then',
-  installIosAdd: 'Add to Home Screen',
+  installIosStep1: 'Tap the Share icon',
+  installIosStep1Sub: 'in the Safari toolbar at the bottom',
+  installIosStep2: 'Tap "Add to Home Screen"',
+  installIosDone: 'Got it!',
   installTitle: 'Install NomNom',
   installSubtitle: 'Add to home screen',
   installButton: 'Install',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { useAuth } from '../context/AuthContext'
@@ -112,24 +112,140 @@ function useInstallPrompt() {
   return { deferredPrompt, isIOS, isStandalone, install }
 }
 
+function useSwipeDown(onDismiss: () => void, threshold = 80) {
+  const ref = useRef<HTMLDivElement>(null)
+  const startY = useRef(0)
+  const dragYRef = useRef(0)
+  const dragging = useRef(false)
+  const [dragY, setDragY] = useState(0)
+  const onDismissRef = useRef(onDismiss)
+  useEffect(() => { onDismissRef.current = onDismiss })
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      startY.current = e.touches[0].clientY
+      dragging.current = true
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!dragging.current) return
+      const dy = Math.max(0, e.touches[0].clientY - startY.current)
+      dragYRef.current = dy
+      setDragY(dy)
+      if (dy > 0) e.preventDefault() // block page scroll while dragging the sheet
+    }
+
+    const onTouchEnd = () => {
+      dragging.current = false
+      if (dragYRef.current >= threshold) onDismissRef.current()
+      dragYRef.current = 0
+      setDragY(0)
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false }) // must be non-passive for preventDefault
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [threshold])
+
+  const sheetStyle: React.CSSProperties = {
+    transform: `translateY(${dragY}px)`,
+    transition: dragging.current ? 'none' : 'transform 0.3s ease',
+  }
+
+  return { ref, sheetStyle }
+}
+
+function SafariShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-lily">
+      <path d="M8 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-3" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
+  )
+}
+
+function AddToHomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-lily">
+      <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  )
+}
+
 function InstallBanner() {
   const { deferredPrompt, isIOS, isStandalone, install } = useInstallPrompt()
   const { t } = useLanguage()
   const [dismissed, setDismissed] = useState(false)
+  const { ref: sheetRef, sheetStyle } = useSwipeDown(() => setDismissed(true))
 
   if (isStandalone || dismissed) return null
 
   if (isIOS) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-start gap-3">
-        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-900">{t('installIosTitle')}</p>
-          <p className="text-xs text-stone-500 mt-0.5">
-            {t('installIosBody')} <span className="font-medium">{t('installIosShare')}</span>{t('installIosThen')} <span className="font-medium">{t('installIosAdd')}</span>
-          </p>
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25">
+        <div
+          className="bg-ivory w-full max-w-sm rounded-t-3xl shadow-2xl px-6 pt-4 pb-10 flex flex-col items-center gap-5"
+          ref={sheetRef}
+          style={sheetStyle}
+        >
+          {/* drag handle — functional, swipe down to dismiss */}
+          <div className="w-10 h-1 rounded-full bg-lily/20" />
+
+          <img src={ICON_BG} alt="NomNom" className="w-16 h-16 rounded-2xl shadow-md" />
+
+          <h2 className="text-xl font-extrabold text-lily text-center">{t('installIosTitle')}</h2>
+
+          {/* Stepper */}
+          <div className="w-full flex flex-col">
+            {/* Step 1 */}
+            <div className="flex items-start gap-4 px-2">
+              <div className="flex flex-col items-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-lily flex items-center justify-center text-ivory text-sm font-extrabold">1</div>
+                <div className="w-px flex-1 my-1 bg-lily/20 min-h-[24px]" />
+              </div>
+              <div className="pb-5">
+                <p className="text-sm font-bold text-lily flex items-center gap-1.5 mt-1">
+                  {t('installIosStep1')}
+                  <SafariShareIcon />
+                </p>
+                <p className="text-xs text-lily/50 mt-0.5">{t('installIosStep1Sub')}</p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex items-start gap-4 px-2">
+              <div className="shrink-0 w-8 flex justify-center">
+                <div className="w-8 h-8 rounded-full bg-lily flex items-center justify-center text-ivory text-sm font-extrabold">2</div>
+              </div>
+              <div className="mt-1">
+                <p className="text-sm font-bold text-lily flex items-center gap-1.5">
+                  {t('installIosStep2')}
+                  <AddToHomeIcon />
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setDismissed(true)}
+            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
+          >
+            {t('installIosDone')}
+          </button>
         </div>
-        <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0">×</button>
       </div>
     )
   }
