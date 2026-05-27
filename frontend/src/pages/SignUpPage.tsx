@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD, NOMNOM_HAPPY } from '../assets'
+import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
+import { useAuth } from '../context/AuthContext'
 
 const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
@@ -99,9 +100,43 @@ function StepDots({ current }: { current: number }) {
   )
 }
 
+function PasswordStrength({ password }: { password: string }) {
+  const { t } = useLanguage()
+  const rules = [
+    { key: 'min8',    label: t('signupPasswordMin8'),    ok: password.length >= 8 },
+    { key: 'upper',   label: t('signupPasswordUpper'),   ok: /[A-Z]/.test(password) },
+    { key: 'number',  label: t('signupPasswordNumber'),  ok: /[0-9]/.test(password) },
+    { key: 'special', label: t('signupPasswordSpecial'), ok: /[^A-Za-z0-9]/.test(password) },
+  ]
+  if (!password) return null
+  const score = rules.filter(r => r.ok).length
+  const barColor = score <= 1 ? '#f97316' : score === 2 ? '#f7a84a' : score === 3 ? '#facc15' : '#3ec9a7'
+  return (
+    <div className="flex flex-col gap-2 px-1">
+      <div className="flex gap-1">
+        {rules.map((_, i) => (
+          <div
+            key={i}
+            className="flex-1 h-1 rounded-full transition-colors duration-300"
+            style={{ backgroundColor: i < score ? barColor : 'color-mix(in srgb, var(--color-lily) 15%, transparent)' }}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+        {rules.map(r => (
+          <span key={r.key} className={`text-[11px] font-bold flex items-center gap-1 transition-colors ${r.ok ? 'text-[#3ec9a7]' : 'text-lily/35'}`}>
+            <span className="text-[10px]">{r.ok ? '✓' : '○'}</span>{r.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SignUpPage() {
   const navigate = useNavigate()
-  const { t, lang } = useLanguage()
+  const { login } = useAuth()
+  const { t, lang, setLang } = useLanguage()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>({
     name: '', email: '', password: '', birthDate: '',
@@ -117,8 +152,15 @@ export default function SignUpPage() {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setData(d => ({ ...d, [field]: e.target.value }))
 
+  const isPasswordStrong = (pw: string) =>
+    pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
+
   const nextStep = (e: React.FormEvent) => {
     e.preventDefault()
+    if (step === 1 && !isPasswordStrong(data.password)) {
+      setError(t('signupPasswordTooWeak'))
+      return
+    }
     // Step 2: require an explicit goal type selection before proceeding.
     if (step === 2 && !data.goalType) {
       setError(t('signupSelectGoal'))
@@ -161,7 +203,9 @@ export default function SignUpPage() {
         }),
       })
       if (!res.ok) throw new Error()
-      setStatus('success')
+      // Auto-login so the user lands straight in the app
+      await login(data.email, data.password)
+      navigate('/')
     } catch {
       setStatus('error')
       setError(t('signupError'))
@@ -196,36 +240,27 @@ export default function SignUpPage() {
     return { kcal: recommended, delta: dailyDelta }
   }, [data.currentIntake, data.weight, data.targetWeight, data.targetDate, data.goalType])
 
-  if (status === 'success') {
-    const successLines = t('signupSuccessBody').split('\n')
-    return (
-      <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
-        <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
-          <img src={NOMNOM_HAPPY} alt="NomNom" className="w-36 h-36" />
-          <h2 className="text-4xl font-extrabold text-lily">
-            {t('signupSuccessTitle').replace('{name}', data.name)}
-          </h2>
-          <p className="text-lily/70 font-semibold leading-relaxed">
-            {successLines.map((line, i) => (
-              <React.Fragment key={i}>
-                {line}
-                {i < successLines.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
-          >
-            {t('signupSuccessLogin')}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6 py-10">
+
+      {/* Language toggle — top right */}
+      <div className="absolute top-4 right-4">
+        <div className="flex gap-1 bg-lily/10 rounded-xl p-0.5">
+          {(['pl', 'en'] as const).map(l => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+              }`}
+            >
+              {l === 'pl' ? 'PL' : 'EN'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="w-full max-w-sm flex flex-col items-center gap-5">
 
         {/* Header — always visible */}
@@ -279,14 +314,14 @@ export default function SignUpPage() {
             >
               <PlainInput
                 type="password"
-                placeholder="Hasło / Password"
+                placeholder={t('signupPasswordPlaceholder')}
                 value={data.password}
                 onChange={set('password')}
                 required
-                minLength={8}
                 borderRadius="12px 8px 14px 6px / 8px 12px 6px 14px"
               />
             </InputWrap>
+            <PasswordStrength password={data.password} />
 
             <InputWrap
               r1="8px 14px 4px 18px / 14px 8px 18px 4px"

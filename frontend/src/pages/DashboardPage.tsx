@@ -348,9 +348,11 @@ export default function DashboardPage() {
       })
       fetchDaily()
     } catch (err) {
-      if (err instanceof ApiError && err.detail === 'AI_UNAVAILABLE') {
+      if (err instanceof ApiError && (err.detail === 'AI_UNAVAILABLE' || err.status === 503)) {
         setAiAvailable(false)
         setSendError('AI unavailable — try USDA search or enter manually')
+      } else if (err instanceof ApiError && (err.detail === 'AI_QUOTA_EXCEEDED' || err.status === 429)) {
+        setSendError('Daily AI limit reached — try again tomorrow')
       } else {
         setSendError('Could not parse entry. Try being more specific.')
       }

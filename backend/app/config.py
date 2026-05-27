@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str | None = None
     usda_api_key: str = ""
+    ai_calls_per_user_per_day: int = 50
 
     cors_origins: str = "http://localhost:5174"
 

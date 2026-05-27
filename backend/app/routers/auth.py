@@ -74,6 +74,7 @@ def me(current_user: User = Depends(get_current_user)):
         "weight_kg": current_user.weight_kg,
         "birth_date": current_user.birth_date,
         "language": current_user.language,
+        "account_type": current_user.account_type,
     }
 
 

@@ -175,9 +175,11 @@ export default function PlannerPage() {
       setActivePlan(plan)
       setPlans(p => [plan, ...p])
     } catch (err) {
-      if (err instanceof ApiError && err.detail === 'AI_UNAVAILABLE') {
+      if (err instanceof ApiError && (err.detail === 'AI_UNAVAILABLE' || err.status === 503)) {
         setAiAvailable(false)
         setError('AI service unavailable')
+      } else if (err instanceof ApiError && (err.detail === 'AI_QUOTA_EXCEEDED' || err.status === 429)) {
+        setError('Daily AI limit reached — try again tomorrow')
       } else {
         setError('Generation failed. Try again.')
       }

@@ -272,113 +272,6 @@ function InstallBanner() {
   return null
 }
 
-function DemoRequestForm() {
-  const { t } = useLanguage()
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'duplicate' | 'error'>('idle')
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setStatus('loading')
-    try {
-      const res = await fetch('/api/demo-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email }),
-      })
-      if (res.status === 409) { setStatus('duplicate'); return }
-      if (!res.ok) throw new Error()
-      setStatus('done')
-    } catch {
-      setStatus('error')
-    }
-  }
-
-  if (status === 'done') return (
-    <p className="text-center text-sm font-bold text-lily">
-      {t('loginDemoDone').replace('{name}', name)}
-    </p>
-  )
-
-  if (!open) return (
-    <button
-      type="button"
-      onClick={() => setOpen(true)}
-      className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
-    >
-      {t('loginDemoButton')}
-    </button>
-  )
-
-  return (
-    <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
-      <input
-        type="text"
-        placeholder={t('loginDemoNamePlaceholder')}
-        value={name}
-        onChange={e => setName(e.target.value)}
-        required
-        style={{ borderRadius: '12px 4px 14px 6px / 4px 12px 6px 14px' }}
-        className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
-      />
-      <input
-        type="text"
-        placeholder={t('loginDemoEmailPlaceholder')}
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        required
-        style={{ borderRadius: '6px 14px 4px 12px / 14px 6px 12px 4px' }}
-        className="w-full bg-ivory border-[3px] border-lily text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none focus:border-lily/70"
-      />
-      {status === 'duplicate' && (
-        <p className="text-center text-sm font-bold text-lily/80">{t('loginDemoDuplicate')}</p>
-      )}
-      {status === 'error' && (
-        <p className="text-center text-sm font-bold text-lily/80">{t('loginDemoError')}</p>
-      )}
-      <button
-        type="submit"
-        disabled={status === 'loading'}
-        className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
-      >
-        {status === 'loading' ? t('loginDemoSending') : t('loginDemoButton')}
-      </button>
-    </form>
-  )
-}
-
-function SignUpExplanation() {
-  const { t } = useLanguage()
-  const [open, setOpen] = useState(false)
-  const lines = t('loginInfoText').split('\n')
-  return (
-    <div className="w-full flex flex-col items-center gap-3">
-      <div className="w-full flex items-center gap-3">
-        <div className="flex-1 h-px bg-lily/30" />
-        <button
-          type="button"
-          onClick={() => setOpen(o => !o)}
-          className="text-xs font-bold text-lily/50 whitespace-nowrap cursor-pointer hover:text-lily/80 transition-colors"
-        >
-          {t('loginInfoToggle')} {open ? '▲' : '▼'}
-        </button>
-        <div className="flex-1 h-px bg-lily/30" />
-      </div>
-      {open && (
-        <p className="text-center text-sm font-semibold text-lily/70 leading-relaxed">
-          {lines.map((line, i) => (
-            <React.Fragment key={i}>
-              {line}
-              {i < lines.length - 1 && <br />}
-            </React.Fragment>
-          ))}
-        </p>
-      )}
-    </div>
-  )
-}
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -401,19 +294,6 @@ export default function LoginPage() {
 
   const LOGO_DEFAULT = SMALL_ICON_NO_BG
   const LOGO_ACTIVE = NOMNOM_SMILING
-
-  const handleDemoLogin = async () => {
-    setError('')
-    setLoading(true)
-    try {
-      await login('demo@nomnom.app', 'demo1234')
-      navigate('/')
-    } catch {
-      setError(t('loginError'))
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -559,22 +439,6 @@ export default function LoginPage() {
           </button>
         </p>
 
-        {/* Demo account shortcut */}
-        <div className="w-full flex flex-col items-center gap-3">
-          <div className="w-full flex items-center gap-3">
-            <div className="flex-1 h-px bg-lily/30" />
-            <span className="text-xs font-bold text-lily/50 whitespace-nowrap">{t('loginOrDemoLabel')}</span>
-            <div className="flex-1 h-px bg-lily/30" />
-          </div>
-          <button
-            type="button"
-            onClick={handleDemoLogin}
-            disabled={loading}
-            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
-          >
-            {t('loginDemoButton')}
-          </button>
-        </div>
       </div>
     </div>
   )

@@ -28,6 +28,7 @@ def _seed_demo_user():
                 weight_kg=75.0,
                 sex="male",
                 language="en",
+                account_type="demo",
             ))
             db.commit()
     finally:

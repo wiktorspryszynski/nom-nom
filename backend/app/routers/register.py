@@ -35,6 +35,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         weight_kg=body.weight_kg,
         birth_date=body.birth_date,
         language=body.language,
+        account_type="demo",
     )
     db.add(user)
     db.commit()

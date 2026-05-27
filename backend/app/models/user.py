@@ -21,3 +21,5 @@ class User(Base):
     weight_kg = Column(Float, nullable=True)
     birth_date = Column(String, nullable=True)
     language = Column(String, nullable=True, default='pl')
+    # "demo" = newly registered / trial account; "full" = upgraded/trusted account
+    account_type = Column(String, nullable=False, default="demo", server_default="demo")

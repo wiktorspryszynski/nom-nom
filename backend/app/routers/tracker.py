@@ -1,5 +1,6 @@
 import base64
 import json
+from collections import defaultdict
 from datetime import date, datetime, timezone
 
 import anthropic
@@ -42,7 +43,7 @@ class SaveLogRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Prompts
+# Prompts (static — perfect candidates for prompt caching)
 # ---------------------------------------------------------------------------
 
 _VISION_PROMPT = (
@@ -67,6 +68,21 @@ _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 # ---------------------------------------------------------------------------
+# Daily AI call cap (in-process; reset on server restart)
+# ---------------------------------------------------------------------------
+
+_daily_ai_calls: dict[tuple[int, date], int] = defaultdict(int)
+
+
+def _check_and_increment_ai_quota(user_id: int) -> None:
+    """Raise 429 if the user has exceeded their daily AI call quota."""
+    key = (user_id, date.today())
+    _daily_ai_calls[key] += 1
+    if _daily_ai_calls[key] > settings.ai_calls_per_user_per_day:
+        raise HTTPException(status_code=429, detail="AI_QUOTA_EXCEEDED")
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -75,14 +91,19 @@ def _today_start_utc() -> datetime:
     return datetime(today.year, today.month, today.day, tzinfo=timezone.utc).replace(tzinfo=None)
 
 
-def _call_claude_haiku(prompt: str) -> dict:
-    """Call Claude Haiku. Raises HTTPException 503 if credits exhausted."""
+def _call_claude_haiku(entry_text: str) -> dict:
+    """Call Claude Haiku with cached system prompt. Raises HTTPException 503 if credits exhausted."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     try:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=256,
-            messages=[{"role": "user", "content": prompt}],
+            system=[{
+                "type": "text",
+                "text": _TEXT_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": entry_text}],
         )
     except anthropic.APIStatusError as e:
         if e.status_code == 402:
@@ -95,7 +116,7 @@ def _call_claude_haiku(prompt: str) -> dict:
 
 
 def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
-    """Call Claude Sonnet Vision. Raises HTTPException 503 if credits exhausted."""
+    """Call Claude Sonnet Vision with cached text prompt. Raises HTTPException 503 if credits exhausted."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     try:
         message = client.messages.create(
@@ -104,8 +125,15 @@ def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
             messages=[{
                 "role": "user",
                 "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
-                    {"type": "text", "text": _VISION_PROMPT},
+                    {
+                        "type": "text",
+                        "text": _VISION_PROMPT,
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media_type, "data": b64},
+                    },
                 ],
             }],
         )
@@ -117,6 +145,51 @@ def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
         return json.loads(message.content[0].text)
     except (json.JSONDecodeError, IndexError):
         raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
+
+
+async def _try_usda_first(text: str) -> dict | None:
+    """Return nutrition dict if USDA finds a confident match for a short query, else None."""
+    if not settings.usda_api_key:
+        return None
+    # Only attempt for short queries (≤4 words) — likely raw/simple foods
+    words = text.strip().split()
+    if len(words) > 4:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                "https://api.nal.usda.gov/fdc/v1/foods/search",
+                params={
+                    "query": text,
+                    "api_key": settings.usda_api_key,
+                    "pageSize": 1,
+                    "dataType": "Survey (FNDDS),SR Legacy",
+                },
+            )
+        if r.status_code != 200:
+            return None
+        foods = r.json().get("foods", [])
+        if not foods:
+            return None
+        top = foods[0]
+        # Confidence check: at least one query word appears in the result name
+        description = top.get("description", "").lower()
+        if not any(w.lower() in description for w in words):
+            return None
+        nutrients = {n["nutrientName"]: n["value"] for n in top.get("foodNutrients", [])}
+        return {
+            "name": top["description"][:40],
+            "description": f"Dane z bazy USDA ({top['description'][:30]})",
+            "kcal": int(nutrients.get("Energy", 0)),
+            "protein": round(nutrients.get("Protein", 0), 1),
+            "fat": round(nutrients.get("Total lipid (fat)", 0), 1),
+            "carbs": round(nutrients.get("Carbohydrate, by difference", 0), 1),
+            "confidence": 0.85,
+            "is_exercise": False,
+            "source": "usda",
+        }
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -310,18 +383,25 @@ def log_water(
 
 
 @router.post("/log/text")
-def log_text(
+async def log_text(
     body: TextLogRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Parse a text description via AI (or fall back to USDA search) and return nutrition data.
+    """Parse a text description via USDA (fast path) or AI (fallback) and return nutrition data.
     Does NOT persist — the client must call POST /log to save after confirmation.
     """
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
 
-    result = _call_claude_haiku(f"{_TEXT_PROMPT}\n\nEntry: {body.text}")
+    # Fast path: try USDA first for short, simple queries (no AI cost)
+    usda_result = await _try_usda_first(body.text)
+    if usda_result:
+        return usda_result
+
+    # AI path: quota guard + Haiku call
+    _check_and_increment_ai_quota(current_user.id)
+    result = _call_claude_haiku(body.text)
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
@@ -341,9 +421,11 @@ async def log_photo(
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
 
+    _check_and_increment_ai_quota(current_user.id)
+
     contents = await file.read()
-    if len(contents) > 20 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="Plik jest za duży (max 20 MB)")
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Plik jest za duży (max 5 MB)")
 
     media_type = file.content_type or "image/jpeg"
     if media_type not in _ALLOWED_MEDIA_TYPES:

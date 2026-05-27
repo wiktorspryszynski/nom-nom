@@ -11,27 +11,34 @@ from app.database import get_db
 from app.models.meal_plan import MealPlan, MealPlanItem
 from app.models.user import User
 from app.routers.auth import get_current_user
+from app.routers.tracker import _check_and_increment_ai_quota
 
 router = APIRouter()
 
-_GENERATE_PROMPT = """\
-You are a meal planner. Generate a {days}-day meal plan for one person.
-User profile: goal={goal_type}, calorie_target={calorie_target} kcal/day, protein_target={protein_target}g/day.
-Dietary notes: {preferences}
+# ---------------------------------------------------------------------------
+# Static system prompt — cached on first call, 10% cost on subsequent hits
+# ---------------------------------------------------------------------------
 
-Return ONLY a raw JSON array (no markdown, no code fences). Each element:
-{{
+_PLAN_SYSTEM_PROMPT = """\
+You are a professional meal planner. Generate a structured weekly meal plan.
+
+Return ONLY a raw JSON array (no markdown, no code fences, no explanation). Each element:
+{
   "day": <1-based integer>,
   "meal_name": "<meal type in Polish: Śniadanie|Drugie śniadanie|Obiad|Kolacja>",
-  "description": "<one Polish sentence>",
+  "description": "<one Polish sentence describing the dish>",
   "kcal": <integer>,
-  "protein": <float>,
-  "fat": <float>,
-  "carbs": <float>
-}}
+  "protein": <float grams>,
+  "fat": <float grams>,
+  "carbs": <float grams>
+}
 
-Produce {meals_per_day} meals per day × {days} days = {total} items total.
-Calories per day should sum close to {calorie_target} kcal.
+Rules:
+- Calories per day must sum close to the user's calorie target.
+- Protein per day must sum close to the user's protein target.
+- Vary cuisine styles across days.
+- Keep descriptions concrete (name the dish, e.g. "Owsianka z bananem i miodem").
+- Do not add any text outside the JSON array.
 """
 
 
@@ -88,14 +95,18 @@ def generate_plan(
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
 
-    prompt = _GENERATE_PROMPT.format(
-        days=body.days,
-        meals_per_day=body.meals_per_day,
-        total=body.days * body.meals_per_day,
-        goal_type=current_user.goal_type or "maintain",
-        calorie_target=current_user.calorie_target or 2000,
-        protein_target=current_user.protein_target or 120,
-        preferences=body.preferences or "none",
+    _check_and_increment_ai_quota(current_user.id)
+
+    # Dynamic part — only user-specific values go here (not cached)
+    user_message = (
+        f"Goal: {current_user.goal_type or 'maintain'}. "
+        f"Calories: {current_user.calorie_target or 2000} kcal/day. "
+        f"Protein: {current_user.protein_target or 120}g/day. "
+        f"Days: {body.days}. "
+        f"Meals per day: {body.meals_per_day}. "
+        f"Total items: {body.days * body.meals_per_day}. "
+        f"Dietary preferences: {body.preferences or 'none'}. "
+        "Generate the meal plan now."
     )
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
@@ -103,7 +114,12 @@ def generate_plan(
         message = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
+            system=[{
+                "type": "text",
+                "text": _PLAN_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": user_message}],
         )
     except anthropic.APIStatusError as e:
         if e.status_code == 402:
