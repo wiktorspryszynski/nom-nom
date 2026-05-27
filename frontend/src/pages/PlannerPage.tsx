@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Sparkles, Plus, ChevronLeft, ChevronRight, Utensils, Dumbbell, X } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import { useLanguage } from '../context/LanguageContext'
+import { NOMNOM_EATING_RAMEN } from '../assets'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 type MealEntry = { name: string; kcal: number }
@@ -161,7 +162,8 @@ export default function PlannerPage() {
   return (
     <div className="min-h-dvh bg-white">
       {/* ── Header ── */}
-      <div className="bg-primary px-5 pt-14 pb-6">
+      <div className="bg-primary px-5 pt-14 pb-6 relative overflow-hidden">
+        <img src={NOMNOM_EATING_RAMEN} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
         <h1 className="text-2xl font-extrabold text-lily mb-4">{t('plannerTitle')}</h1>
 
         {/* Week navigation */}

@@ -3,6 +3,7 @@ import { Target, LogOut, ChevronRight, Pencil, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
+import { NOMNOM_HAPPY } from '../assets'
 
 // ─── Mock user data ────────────────────────────────────────────────────────────
 const mockUser = { name: 'Wiktor', email: 'wiktor@spryszynski.pl' }
@@ -17,38 +18,41 @@ function Avatar({ name }: { name: string }) {
   )
 }
 
-function GoalField({ label, value, unit, onChange }: {
-  label: string; value: string; unit: string; onChange: (v: string) => void
+function GoalField({ label, value, unit, onChange, hint }: {
+  label: string; value: string; unit: string; onChange: (v: string) => void; hint?: string
 }) {
   const [editing, setEditing] = useState(false)
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-lily/10 last:border-0">
-      <span className="text-sm font-bold text-lily/70">{label}</span>
-      <div className="flex items-center gap-2">
-        {editing ? (
-          <>
-            <input
-              type="number"
-              value={value}
-              onChange={e => onChange(e.target.value)}
-              autoFocus
-              className="w-20 text-right bg-ivory border-[2px] border-lily/40 text-lily font-extrabold
-                         text-sm px-2 py-1 rounded-lg outline-none focus:border-lily/70"
-            />
-            <span className="text-xs font-bold text-lily/40">{unit}</span>
-            <button onClick={() => setEditing(false)} className="text-[#3ec9a7] cursor-pointer">
-              <Check size={16} strokeWidth={2.5} />
-            </button>
-          </>
-        ) : (
-          <>
-            <span className="text-sm font-extrabold text-lily">{value} {unit}</span>
-            <button onClick={() => setEditing(true)} className="text-lily/30 hover:text-lily/60 transition-colors cursor-pointer">
-              <Pencil size={13} />
-            </button>
-          </>
-        )}
+    <div className="py-3.5 border-b border-lily/10 last:border-0">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-bold text-lily/70">{label}</span>
+        <div className="flex items-center gap-2">
+          {editing ? (
+            <>
+              <input
+                type="number"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                autoFocus
+                className="w-20 text-right bg-ivory border-[2px] border-lily/40 text-lily font-extrabold
+                           text-sm px-2 py-1 rounded-lg outline-none focus:border-lily/70"
+              />
+              <span className="text-xs font-bold text-lily/40">{unit}</span>
+              <button onClick={() => setEditing(false)} className="text-[#3ec9a7] cursor-pointer">
+                <Check size={16} strokeWidth={2.5} />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-extrabold text-lily">{value} {unit}</span>
+              <button onClick={() => setEditing(true)} className="text-lily/30 hover:text-lily/60 transition-colors cursor-pointer">
+                <Pencil size={13} />
+              </button>
+            </>
+          )}
+        </div>
       </div>
+      {hint && <p className="text-xs font-semibold text-lily/35 mt-0.5">{hint}</p>}
     </div>
   )
 }
@@ -62,18 +66,38 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
+// Mock values — replace with real user data once backend /me returns full profile
+const MOCK_TDEE = 2400
+const MOCK_WEIGHT_KG = 75.5
+const MOCK_GOAL_TYPE = 'lose' // 'lose' | 'maintain' | 'build'
+const PROTEIN_MULTIPLIERS: Record<string, number> = { lose: 2.0, maintain: 1.6, build: 2.2 }
+
+function computeRecommendedProtein(weightKg: number, goalType: string): number {
+  return Math.round(weightKg * (PROTEIN_MULTIPLIERS[goalType] ?? 1.6))
+}
+
 export default function ProfilePage() {
   const { logout } = useAuth()
   const { t, lang, setLang } = useLanguage()
-  const [calorieGoal, setCalorieGoal] = useState('2000')
+  const [tdee, setTdee] = useState(String(MOCK_TDEE))
+  const [calorieTarget, setCalorieTarget] = useState('2063')
   const [weightGoal, setWeightGoal] = useState('72')
-  const [proteinGoal, setProteinGoal] = useState('120')
+  const [proteinGoal, setProteinGoal] = useState(String(computeRecommendedProtein(MOCK_WEIGHT_KG, MOCK_GOAL_TYPE)))
   const [height, setHeight] = useState('178')
+
+  const recommendedProtein = computeRecommendedProtein(MOCK_WEIGHT_KG, MOCK_GOAL_TYPE)
+  const deficit = Number(tdee) - Number(calorieTarget)
+  const deficitLabel = deficit > 0
+    ? `${t('profileDeficit')}: ${deficit} kcal`
+    : deficit < 0
+    ? `${t('profileSurplus')}: ${Math.abs(deficit)} kcal`
+    : null
 
   return (
     <div className="min-h-dvh bg-white">
       {/* ── Header ── */}
-      <div className="bg-primary px-5 pt-14 pb-10">
+      <div className="bg-primary px-5 pt-14 pb-10 relative overflow-hidden">
+        <img src={NOMNOM_HAPPY} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
         <h1 className="text-2xl font-extrabold text-lily mb-6">{t('profileTitle')}</h1>
         <div className="flex items-center gap-4">
           <Avatar name={mockUser.name} />
@@ -84,7 +108,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="px-4 pb-28 space-y-4 -mt-4">
+      <div className="px-4 pb-28 space-y-4 mt-4 relative z-10">
         {/* ── Account info ── */}
         <div className="bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 px-4">
           <InfoRow label={t('profileName')}  value={mockUser.name} />
@@ -97,10 +121,28 @@ export default function ProfilePage() {
             <Target size={14} className="text-lily/50" />
             <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('profileGoals')}</h2>
           </div>
-          <GoalField label={t('profileHeight')}       value={height}       unit="cm"   onChange={setHeight} />
-          <GoalField label={t('profileCalorieGoal')}  value={calorieGoal}  unit="kcal" onChange={setCalorieGoal} />
-          <GoalField label={t('profileWeightGoal')}   value={weightGoal}   unit="kg"   onChange={setWeightGoal} />
-          <GoalField label={t('profileProteinGoal')}  value={proteinGoal}  unit="g"    onChange={setProteinGoal} />
+          <GoalField label={t('profileHeight')}      value={height}       unit="cm"   onChange={setHeight} />
+          <GoalField
+            label={t('profileTdee')}
+            value={tdee}
+            unit="kcal"
+            onChange={setTdee}
+          />
+          <GoalField
+            label={t('profileCalorieTarget')}
+            value={calorieTarget}
+            unit="kcal"
+            onChange={setCalorieTarget}
+            hint={deficitLabel ?? undefined}
+          />
+          <GoalField label={t('profileWeightGoal')}  value={weightGoal}   unit="kg"   onChange={setWeightGoal} />
+          <GoalField
+            label={t('profileProteinGoal')}
+            value={proteinGoal}
+            unit="g"
+            onChange={setProteinGoal}
+            hint={t('profileProteinRecommended').replace('{g}', String(recommendedProtein))}
+          />
         </div>
 
         {/* ── App section ── */}

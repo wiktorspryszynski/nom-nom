@@ -1,8 +1,276 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import { SMALL_ICON_NO_BG, NOMNOM_SMILING } from '../assets'
+import { QrCode } from 'lucide-react'
+import { SMALL_ICON_NO_BG, NOMNOM_SMILING, ICON_BG } from '../assets'
+
+const APP_URL = 'https://fit.spryszynski.pl'
+const APP_URL_QR = `${APP_URL}?ref=qr`
+const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
+
+function useIsDesktop() {
+  const [isDesktop] = useState(() => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
+    return window.matchMedia('(pointer: fine) and (min-width: 768px)').matches && !isStandalone
+  })
+  return isDesktop
+}
+
+function DesktopQRBanner({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t, lang, setLang } = useLanguage()
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary px-6">
+      <div className="bg-[#fde68a] rounded-3xl shadow-2xl p-8 flex flex-col items-center gap-5 max-w-xs w-full relative">
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 text-lily/30 hover:text-lily/70 transition-colors text-2xl leading-none cursor-pointer"
+        >
+          ×
+        </button>
+
+        <div className="absolute top-4 left-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
+          {(['pl', 'en'] as const).map(l => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+              }`}
+            >
+              {l === 'pl' ? 'PL' : 'EN'}
+            </button>
+          ))}
+        </div>
+
+        <img src={ICON_BG} alt="NomNom" className="w-16 h-16 rounded-2xl" />
+
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-lily">{t('desktopBannerTitle')}</h2>
+          <p className="text-sm font-semibold text-lily/60 mt-1">{t('desktopBannerBody')}</p>
+        </div>
+
+        <div className="p-3 bg-white rounded-2xl shadow-inner">
+          <QRCodeSVG
+            value={APP_URL_QR}
+            size={180}
+            bgColor="#ffffff"
+            fgColor="#7d3ed0"
+            level="M"
+          />
+        </div>
+
+        <p className="text-xs font-bold text-lily/40 tracking-wide">{APP_URL.replace('https://', '')}</p>
+
+        <button
+          onClick={onClose}
+          className="text-xs font-bold text-lily/40 hover:text-lily/70 transition-colors cursor-pointer underline underline-offset-2"
+        >
+          {t('desktopBannerContinue')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
+function useInstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [isIOS] = useState(() => /iPhone|iPad|iPod/.test(navigator.userAgent))
+  const [isStandalone] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
+  )
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault()
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const install = async () => {
+    if (!deferredPrompt) return
+    await deferredPrompt.prompt()
+    const { outcome } = await deferredPrompt.userChoice
+    if (outcome === 'accepted') setDeferredPrompt(null)
+  }
+
+  return { deferredPrompt, isIOS, isStandalone, install }
+}
+
+function useSwipeDown(onDismiss: () => void, threshold = 80) {
+  const ref = useRef<HTMLDivElement>(null)
+  const startY = useRef(0)
+  const dragYRef = useRef(0)
+  const dragging = useRef(false)
+  const [dragY, setDragY] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const onDismissRef = useRef(onDismiss)
+  useEffect(() => { onDismissRef.current = onDismiss })
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      setIsDragging(true)
+      startY.current = e.touches[0].clientY
+      dragging.current = true
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!dragging.current) return
+      const dy = Math.max(0, e.touches[0].clientY - startY.current)
+      dragYRef.current = dy
+      setDragY(dy)
+      if (dy > 0) e.preventDefault() // block page scroll while dragging the sheet
+    }
+
+    const onTouchEnd = () => {
+      dragging.current = false
+      setIsDragging(false)
+      if (dragYRef.current >= threshold) onDismissRef.current()
+      dragYRef.current = 0
+      setDragY(0)
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false }) // must be non-passive for preventDefault
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [threshold])
+
+  const sheetStyle: React.CSSProperties = {
+    transform: `translateY(${dragY}px)`,
+    transition: isDragging ? 'none' : 'transform 0.3s ease',
+  }
+
+  return { ref, sheetStyle }
+}
+
+function SafariShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-lily">
+      <path d="M8 12H5a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-3" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
+  )
+}
+
+function AddToHomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-lily">
+      <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  )
+}
+
+function InstallBanner() {
+  const { deferredPrompt, isIOS, isStandalone, install } = useInstallPrompt()
+  const { t } = useLanguage()
+  const [dismissed, setDismissed] = useState(false)
+  const { ref: sheetRef, sheetStyle } = useSwipeDown(() => setDismissed(true))
+
+  if (isStandalone || dismissed) return null
+
+  if (isIOS) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25">
+        <div
+          className="bg-ivory w-full max-w-sm rounded-t-3xl shadow-2xl px-6 pt-4 pb-10 flex flex-col items-center gap-5"
+          ref={sheetRef}
+          style={sheetStyle}
+        >
+          {/* drag handle — functional, swipe down to dismiss */}
+          <div className="w-10 h-1 rounded-full bg-lily/20" />
+
+          <img src={ICON_BG} alt="NomNom" className="w-16 h-16 rounded-2xl shadow-md" />
+
+          <h2 className="text-xl font-extrabold text-lily text-center">{t('installIosTitle')}</h2>
+
+          {/* Stepper */}
+          <div className="w-full flex flex-col">
+            {/* Step 1 */}
+            <div className="flex items-start gap-4 px-2">
+              <div className="flex flex-col items-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-lily flex items-center justify-center text-ivory text-sm font-extrabold">1</div>
+                <div className="w-px flex-1 my-1 bg-lily/20 min-h-[24px]" />
+              </div>
+              <div className="pb-5">
+                <p className="text-sm font-bold text-lily flex items-center gap-1.5 mt-1">
+                  {t('installIosStep1')}
+                  <SafariShareIcon />
+                </p>
+                <p className="text-xs text-lily/50 mt-0.5">{t('installIosStep1Sub')}</p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex items-start gap-4 px-2">
+              <div className="shrink-0 w-8 flex justify-center">
+                <div className="w-8 h-8 rounded-full bg-lily flex items-center justify-center text-ivory text-sm font-extrabold">2</div>
+              </div>
+              <div className="mt-1">
+                <p className="text-sm font-bold text-lily flex items-center gap-1.5">
+                  {t('installIosStep2')}
+                  <AddToHomeIcon />
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setDismissed(true)}
+            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
+          >
+            {t('installIosDone')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (deferredPrompt) {
+    return (
+      <div className="fixed bottom-4 left-4 right-4 bg-white border border-stone-200 rounded-2xl shadow-lg p-4 flex items-center gap-3">
+        <img src={ICON_BG} alt="" className="w-10 h-10 rounded-xl shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-stone-900">{t('installTitle')}</p>
+          <p className="text-xs text-stone-500 mt-0.5">{t('installSubtitle')}</p>
+        </div>
+        <button onClick={() => setDismissed(true)} className="text-stone-400 hover:text-stone-600 text-lg leading-none shrink-0 mr-1">×</button>
+        <button onClick={install} className="bg-primary text-stone-900 text-sm font-semibold px-4 py-1.5 rounded-xl shrink-0">
+          {t('installButton')}
+        </button>
+      </div>
+    )
+  }
+
+  return null
+}
 
 function DemoRequestForm() {
   const { t } = useLanguage()
@@ -122,6 +390,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [logoActive, setLogoActive] = useState(false)
   const [bouncing, setBouncing] = useState(false)
+  const isDesktop = useIsDesktop()
+  const [showQR, setShowQR] = useState(() => isDesktop && localStorage.getItem(DESKTOP_DISMISSED_KEY) !== '1')
 
   const handleTitleClick = () => {
     if (bouncing) return
@@ -149,20 +419,34 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
-      {/* Language toggle — top right */}
-      <div className="absolute top-4 right-4 flex gap-1 bg-lily/10 rounded-xl p-0.5">
-        {(['pl', 'en'] as const).map(l => (
+      <DesktopQRBanner open={showQR} onClose={() => { localStorage.setItem(DESKTOP_DISMISSED_KEY, '1'); setShowQR(false) }} />
+      <InstallBanner />
+      {/* Language toggle + QR trigger — top right */}
+      <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+        <div className="flex gap-1 bg-lily/10 rounded-xl p-0.5">
+          {(['pl', 'en'] as const).map(l => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+              }`}
+            >
+              {l === 'pl' ? 'PL' : 'EN'}
+            </button>
+          ))}
+        </div>
+        {isDesktop && (
           <button
-            key={l}
             type="button"
-            onClick={() => setLang(l)}
-            className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
-              lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
-            }`}
+            onClick={() => setShowQR(true)}
+            aria-label="Show QR code"
+            className="text-lily/60 hover:text-lily transition-colors cursor-pointer"
           >
-            {l === 'pl' ? 'PL' : 'EN'}
+            <QrCode size={32} strokeWidth={1.75} />
           </button>
-        ))}
+        )}
       </div>
 
       <div className="w-full max-w-sm flex flex-col items-center gap-6">

@@ -13,7 +13,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-white border-t-[3px] border-lily/20 pb-safe">
+    <nav className="fixed bottom-0 inset-x-0 z-20 bg-white border-t-[3px] border-lily/20 pb-safe">
       <div className="flex items-center justify-around h-16 max-w-sm mx-auto px-2">
         {links.map(({ to, label, Icon }) => (
           <NavLink
@@ -21,7 +21,7 @@ export default function BottomNav() {
             to={to}
             end
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors cursor-pointer ${
+              `flex flex-col items-center gap-0.5 px-4 pt-2 pb-4 rounded-xl transition-colors cursor-pointer ${
                 isActive ? 'text-lily' : 'text-lily/35'
               }`
             }

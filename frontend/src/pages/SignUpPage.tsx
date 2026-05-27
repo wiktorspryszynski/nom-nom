@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD, NOMNOM_HAPPY } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
@@ -7,13 +7,16 @@ const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
 
 interface FormData {
+  inviteCode: string
   name: string
   email: string
+  password: string
   birthDate: string
   sex: 'M' | 'F' | ''
   height: string
   weight: string
   targetWeight: string
+  goalType: 'lose' | 'maintain' | 'build' | ''
   currentIntake: string
   targetDate: string
 }
@@ -102,13 +105,14 @@ export default function SignUpPage() {
   const { t, lang } = useLanguage()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>({
-    name: '', email: '', birthDate: '',
+    inviteCode: '', name: '', email: '', password: '', birthDate: '',
     sex: '', height: '', weight: '', targetWeight: '',
-    currentIntake: '', targetDate: '',
+    goalType: '', currentIntake: '', targetDate: '',
   })
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
+  const [calorieTarget, setCalorieTarget] = useState<number | null>(null)
 
   const set = (field: keyof FormData) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -116,6 +120,12 @@ export default function SignUpPage() {
 
   const nextStep = (e: React.FormEvent) => {
     e.preventDefault()
+    // Step 2: require an explicit goal type selection before proceeding.
+    if (step === 2 && !data.goalType) {
+      setError(t('signupSelectGoal'))
+      return
+    }
+    setError('')
     setStep(s => s + 1)
   }
 
@@ -129,20 +139,26 @@ export default function SignUpPage() {
     }
     setStatus('loading')
     setError('')
+    const tdee = Number(data.currentIntake)
+    const target = calorieTarget ?? tdee
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          invite_code: data.inviteCode,
           name: data.name,
           email: data.email,
+          password: data.password,
           birth_date: data.birthDate || null,
           sex: data.sex,
           height_cm: Number(data.height),
           weight_kg: Number(data.weight),
           target_weight_kg: Number(data.targetWeight),
-          current_daily_intake: Number(data.currentIntake),
-          target_date_preset: data.targetDate,
+          tdee_kcal: tdee,
+          calorie_target: target,
+          goal_type: data.goalType || 'maintain',
+          // target_date_preset is a UI-only field; calorie_target is the derived value we persist.
           language: lang,
         }),
       })
@@ -160,6 +176,27 @@ export default function SignUpPage() {
     { label: t('signupGoalPreset12m'),  value: '12m' },
     { label: t('signupGoalPresetNone'), value: 'none' },
   ]
+
+  const GOAL_TYPES = [
+    { label: t('signupGoalLose'),     value: 'lose' as const },
+    { label: t('signupGoalMaintain'), value: 'maintain' as const },
+    { label: t('signupGoalBuild'),    value: 'build' as const },
+  ]
+
+  const PRESET_DAYS: Record<string, number> = { '3m': 91, '6m': 182, '12m': 365, 'none': 182 }
+  const MIN_KCAL = data.sex === 'F' ? 1200 : 1500
+
+  const recommendation = useMemo((): { kcal: number; delta: number } | null => {
+    const tdee = Number(data.currentIntake)
+    const w = Number(data.weight)
+    const tw = Number(data.targetWeight)
+    if (!tdee || !w || !tw || !data.targetDate || data.goalType === 'maintain' || !data.goalType) return null
+    const days = PRESET_DAYS[data.targetDate] ?? 182
+    const totalDelta = (w - tw) * 7700
+    const dailyDelta = Math.round(totalDelta / days)
+    const recommended = tdee - dailyDelta
+    return { kcal: recommended, delta: dailyDelta }
+  }, [data.currentIntake, data.weight, data.targetWeight, data.targetDate, data.goalType])
 
   if (status === 'success') {
     const successLines = t('signupSuccessBody').split('\n')
@@ -207,6 +244,22 @@ export default function SignUpPage() {
         {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
+            {/* Invite code — required to gate open registration */}
+            <InputWrap
+              r1="2px 20px 4px 18px / 20px 2px 18px 4px"
+              r2="4px 16px 8px 20px / 16px 4px 20px 8px"
+              r3="8px 12px 4px 16px / 12px 8px 16px 4px"
+            >
+              <PlainInput
+                type="text"
+                placeholder={t('signupInviteCodePlaceholder')}
+                value={data.inviteCode}
+                onChange={set('inviteCode')}
+                required
+                borderRadius="2px 20px 4px 18px / 20px 2px 18px 4px"
+              />
+            </InputWrap>
+
             <InputWrap
               r1="4px 18px 6px 16px / 18px 4px 16px 6px"
               r2="6px 14px 10px 20px / 20px 6px 14px 4px"
@@ -238,6 +291,22 @@ export default function SignUpPage() {
             </InputWrap>
 
             <InputWrap
+              r1="12px 8px 14px 6px / 8px 12px 6px 14px"
+              r2="10px 14px 8px 16px / 14px 10px 16px 8px"
+              r3="16px 6px 12px 10px / 6px 16px 10px 12px"
+            >
+              <PlainInput
+                type="password"
+                placeholder="Hasło / Password"
+                value={data.password}
+                onChange={set('password')}
+                required
+                minLength={8}
+                borderRadius="12px 8px 14px 6px / 8px 12px 6px 14px"
+              />
+            </InputWrap>
+
+            <InputWrap
               r1="8px 14px 4px 18px / 14px 8px 18px 4px"
               r2="12px 6px 16px 8px / 6px 14px 8px 16px"
               r3="4px 18px 8px 12px / 18px 4px 12px 8px"
@@ -264,6 +333,23 @@ export default function SignUpPage() {
         {/* ── Step 2: Body ── */}
         {step === 2 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
+            <p className="text-center text-sm font-bold text-lily/50 -mb-1">{t('signupGoalTypeLabel')}</p>
+
+            <div className="flex gap-2">
+              {GOAL_TYPES.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setData(d => ({ ...d, goalType: value }))}
+                  className={`flex-1 py-4 px-1 rounded-2xl border-[3px] border-lily text-xs font-extrabold text-center leading-snug transition-colors cursor-pointer ${
+                    data.goalType === value ? 'bg-lily text-primary' : 'bg-transparent text-lily'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <p className="text-center text-sm font-bold text-lily/50 -mb-1">{t('signupStepBodyLabel')}</p>
 
             <div className="flex gap-2">
@@ -424,6 +510,40 @@ export default function SignUpPage() {
                 })}
               </div>
             </div>
+
+            {recommendation && (
+              <div className="rounded-2xl border-[2px] border-lily/30 bg-lily/5 p-4 flex flex-col gap-2">
+                <p className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">
+                  {t('signupRecommendedIntakeLabel')}
+                </p>
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-extrabold text-lily leading-none">
+                    {recommendation.kcal.toLocaleString()}
+                  </span>
+                  <span className="text-sm font-bold text-lily/50 pb-0.5">kcal</span>
+                  <span className="text-xs font-bold text-lily/40 pb-0.5 ml-1">
+                    {recommendation.delta > 0
+                      ? t('signupDeficitNote').replace('{kcal}', String(Math.abs(recommendation.delta)))
+                      : t('signupSurplusNote').replace('{kcal}', String(Math.abs(recommendation.delta)))}
+                  </span>
+                </div>
+                {recommendation.kcal < MIN_KCAL && (
+                  <p className="text-xs font-bold text-[#f7a84a]">{t('signupWarningTooLow')}</p>
+                )}
+                {calorieTarget !== recommendation.kcal && (
+                  <button
+                    type="button"
+                    onClick={() => setCalorieTarget(recommendation.kcal)}
+                    className="self-start text-xs font-bold text-lily/60 hover:text-lily transition-colors cursor-pointer underline underline-offset-2"
+                  >
+                    {t('signupAcceptRecommendation')}
+                  </button>
+                )}
+                {calorieTarget === recommendation.kcal && (
+                  <p className="text-xs font-bold text-[#3ec9a7]">✓ {t('signupAcceptRecommendation')}</p>
+                )}
+              </div>
+            )}
 
             {error && (
               <p className="text-center text-sm font-bold text-lily/80">{error}</p>

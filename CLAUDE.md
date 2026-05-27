@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**NomNom** is a meal planning and diet/exercise tracking app for 2 users (for now).
+**NomNom** is a meal planning and diet/exercise tracking app.
 **Domain:** `fit.spryszynski.pl`
 **Character:** Side project with portfolio potential.
 
