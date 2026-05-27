@@ -39,6 +39,13 @@ def _check_signup_rate(request: Request) -> None:
     _signup_attempts[ip] = recent
 
 
+@router.get("/check-email")
+def check_email(email: str, db: Session = Depends(get_db)):
+    """Return whether an email address is already registered. No auth required."""
+    taken = db.query(User).filter(User.email == email).first() is not None
+    return {"available": not taken}
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     _check_signup_rate(request)

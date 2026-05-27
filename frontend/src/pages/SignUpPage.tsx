@@ -200,11 +200,27 @@ export default function SignUpPage() {
   const isPasswordStrong = (pw: string) =>
     pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
 
-  const nextStep = (e: React.FormEvent) => {
+  const nextStep = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (step === 1 && !viaGitHub && !isPasswordStrong(data.password)) {
-      setError(t('signupPasswordTooWeak'))
-      return
+    if (step === 1) {
+      if (!viaGitHub && !isPasswordStrong(data.password)) {
+        setError(t('signupPasswordTooWeak'))
+        return
+      }
+      // Check email availability before proceeding to step 2
+      setStatus('loading')
+      try {
+        const res = await fetch(`/api/register/check-email?email=${encodeURIComponent(data.email)}`)
+        const { available } = await res.json()
+        if (!available) {
+          setError(t('signupEmailTaken'))
+          setStatus('idle')
+          return
+        }
+      } catch {
+        // Network error — allow proceeding, final submit will catch it
+      }
+      setStatus('idle')
     }
     // Step 2: require an explicit goal type selection before proceeding.
     if (step === 2 && !data.goalType) {
@@ -416,9 +432,10 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
+              disabled={status === 'loading'}
+              className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
             >
-              {t('signupNext')}
+              {status === 'loading' ? '…' : t('signupNext')}
             </button>
           </form>
         )}
