@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="frontend/public/nomnom/nomnom-icon-no_bg_small.png" alt="NomNom" width="96" />
+</div>
+
 # NomNom
 
 A meal tracking and planning PWA.<br>
@@ -5,8 +9,9 @@ You describe what you ate (or photograph it), the app extracts the nutrition dat
 
 **Live:** https://fit.spryszynski.pl
 
-![screenshot placeholder]
-![demo gif placeholder]
+<div align="center">
+  <img src="assets/screenshot_1.png" alt="NomNom dashboard screenshot" width="320" />
+</div>
 
 ---
 
