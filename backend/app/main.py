@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db, get_db
-from app.routers import auth, meal_planner, tracker, measurements, demo, register
+from app.routers import auth, meal_planner, tracker, measurements, demo, register, github_auth
 
 
 def _seed_demo_user():
@@ -62,6 +62,7 @@ app.include_router(meal_planner.router, prefix="/api/meal-planner", tags=["meal-
 app.include_router(tracker.router, prefix="/api/tracker", tags=["tracker"])
 app.include_router(measurements.router, prefix="/api/measurements", tags=["measurements"])
 app.include_router(demo.router, prefix="/api/demo-request", tags=["demo"])
+app.include_router(github_auth.router, prefix="/api/auth/github", tags=["auth"])
 
 
 @app.get("/api/health")

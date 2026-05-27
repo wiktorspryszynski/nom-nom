@@ -68,18 +68,37 @@ _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 # ---------------------------------------------------------------------------
-# Daily AI call cap (in-process; reset on server restart)
+# AI call quota guards
 # ---------------------------------------------------------------------------
 
 _daily_ai_calls: dict[tuple[int, date], int] = defaultdict(int)
 
 
 def _check_and_increment_ai_quota(user_id: int) -> None:
-    """Raise 429 if the user has exceeded their daily AI call quota."""
+    """Raise 429 if a full user has exceeded their daily AI call quota."""
     key = (user_id, date.today())
     _daily_ai_calls[key] += 1
     if _daily_ai_calls[key] > settings.ai_calls_per_user_per_day:
         raise HTTPException(status_code=429, detail="AI_QUOTA_EXCEEDED")
+
+
+def _check_demo_quota(user: User, db: Session) -> None:
+    """Raise 429 if a demo user has used their lifetime AI call allowance."""
+    if user.account_type != "demo":
+        return
+    if user.demo_ai_calls_used >= settings.demo_ai_call_limit:
+        raise HTTPException(status_code=429, detail="DEMO_QUOTA_EXCEEDED")
+    user.demo_ai_calls_used += 1
+    db.commit()
+
+
+def _check_ai_quota(user: User, db: Session) -> None:
+    """Unified quota check: demo users use the persistent lifetime cap;
+    full users use the in-memory daily cap."""
+    if user.account_type == "demo":
+        _check_demo_quota(user, db)
+    else:
+        _check_and_increment_ai_quota(user.id)
 
 
 # ---------------------------------------------------------------------------
@@ -400,7 +419,7 @@ async def log_text(
         return usda_result
 
     # AI path: quota guard + Haiku call
-    _check_and_increment_ai_quota(current_user.id)
+    _check_ai_quota(current_user, db)
     result = _call_claude_haiku(body.text)
 
     if "error" in result:
@@ -421,7 +440,7 @@ async def log_photo(
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
 
-    _check_and_increment_ai_quota(current_user.id)
+    _check_ai_quota(current_user, db)
 
     contents = await file.read()
     if len(contents) > 5 * 1024 * 1024:

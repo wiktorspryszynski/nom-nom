@@ -21,8 +21,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     usda_api_key: str = ""
     ai_calls_per_user_per_day: int = 50
+    demo_ai_call_limit: int = 15  # lifetime cap for demo accounts (never resets)
 
     cors_origins: str = "http://localhost:5174"
+
+    # GitHub OAuth
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    github_redirect_uri: str = ""  # e.g. https://fit.spryszynski.pl/auth/github/callback
 
     # Email notifications for demo requests (optional — leave empty to skip)
     smtp_host: str = ""

@@ -8,14 +8,19 @@ import PlannerPage from './pages/PlannerPage'
 import MeasurementsPage from './pages/MeasurementsPage'
 import ProfilePage from './pages/ProfilePage'
 import NotFoundPage from './pages/NotFoundPage'
+import GitHubCallbackPage from './pages/GitHubCallbackPage'
+import DemoLimitModal from './components/DemoLimitModal'
 
 function AppShell() {
   const { token } = useAuth()
   return (
     <>
+      <DemoLimitModal />
       <Routes>
         <Route path="/login"    element={token ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/register" element={token ? <Navigate to="/" replace /> : <SignUpPage />} />
+        {/* GitHub OAuth callback — always accessible regardless of auth state */}
+        <Route path="/auth/github/callback" element={<GitHubCallbackPage />} />
         {token ? (
           <>
             <Route path="/"             element={<DashboardPage />} />

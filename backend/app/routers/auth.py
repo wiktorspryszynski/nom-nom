@@ -52,7 +52,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 @router.post("/token", response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form.username).first()
-    if not user or not verify_password(form.password, user.hashed_password):
+    # GitHub-only users have no password — block password login for them
+    if not user or not user.hashed_password or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect credentials")
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
@@ -75,6 +76,7 @@ def me(current_user: User = Depends(get_current_user)):
         "birth_date": current_user.birth_date,
         "language": current_user.language,
         "account_type": current_user.account_type,
+        "demo_ai_calls_used": current_user.demo_ai_calls_used,
     }
 
 

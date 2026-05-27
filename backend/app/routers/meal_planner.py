@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models.meal_plan import MealPlan, MealPlanItem
 from app.models.user import User
 from app.routers.auth import get_current_user
-from app.routers.tracker import _check_and_increment_ai_quota
+from app.routers.tracker import _check_ai_quota
 
 router = APIRouter()
 
@@ -95,7 +95,7 @@ def generate_plan(
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
 
-    _check_and_increment_ai_quota(current_user.id)
+    _check_ai_quota(current_user, db)
 
     # Dynamic part — only user-specific values go here (not cached)
     user_message = (
