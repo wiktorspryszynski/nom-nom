@@ -130,6 +130,24 @@ user_preference_profiles (id, user_id, profile_json, updated_at)
 - Vite dev server proxies `/api` → `http://localhost:8001` (no rewrite needed)
 - CORS origins are read from `CORS_ORIGINS` env var (comma-separated list)
 
+### Database migrations (Alembic)
+
+```bash
+# After changing a model — generate a new migration:
+docker exec nom-nom-backend-dev-1 alembic revision --autogenerate -m "describe change"
+
+# Apply all pending migrations manually (also runs automatically at startup):
+docker exec nom-nom-backend-dev-1 alembic upgrade head
+
+# Roll back one migration:
+docker exec nom-nom-backend-dev-1 alembic downgrade -1
+
+# Show current revision:
+docker exec nom-nom-backend-dev-1 alembic current
+```
+
+Migration files live in `backend/alembic/versions/` — always commit them.
+
 ### Docker Compose profiles
 
 ```bash

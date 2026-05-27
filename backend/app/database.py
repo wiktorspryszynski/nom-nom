@@ -12,19 +12,16 @@ class Base(DeclarativeBase):
 
 
 def init_db() -> None:
-    import app.models  # noqa: F401 — registers all models with Base
-    Base.metadata.create_all(bind=engine)
-    # Apply schema migrations for columns added after initial create_all.
-    from app.migrations import run_migrations
-    session = SessionLocal()
-    try:
-        run_migrations(session)
-    except Exception as exc:  # never block startup due to a migration error
-        import logging
-        logging.getLogger(__name__).error("Migration failed (non-fatal): %s", exc)
-        session.rollback()
-    finally:
-        session.close()
+    """Run pending Alembic migrations at startup."""
+    import os
+    from alembic import command
+    from alembic.config import Config
+
+    # Resolve alembic.ini relative to this file so it works both inside Docker
+    # (/app/alembic.ini) and when running the backend directly from backend/.
+    ini_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+    alembic_cfg = Config(os.path.normpath(ini_path))
+    command.upgrade(alembic_cfg, "head")
 
 
 def get_db():
