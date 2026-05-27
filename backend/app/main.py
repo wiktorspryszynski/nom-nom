@@ -26,7 +26,7 @@ def _seed_demo_user():
                 protein_target=150,
                 height_cm=175.0,
                 weight_kg=75.0,
-                sex="male",
+                sex="M",
                 language="en",
                 account_type="demo",
             ))

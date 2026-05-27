@@ -402,15 +402,6 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        {/* GitHub OAuth */}
-        <GitHubButton />
-
-        <div className="w-full flex items-center gap-3">
-          <div className="flex-1 h-px bg-lily/20" />
-          <span className="text-xs font-bold text-lily/40">{t('loginOrSignUpLabel').toUpperCase()}</span>
-          <div className="flex-1 h-px bg-lily/20" />
-        </div>
-
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
           <div
             className="input-wrap"
@@ -461,6 +452,18 @@ export default function LoginPage() {
             {loading ? t('loginLoading') : t('loginSubmit')}
           </button>
         </form>
+
+        {/* GitHub OAuth — only renders when VITE_GITHUB_CLIENT_ID is set */}
+        {import.meta.env.VITE_GITHUB_CLIENT_ID && (
+          <>
+            <div className="w-full flex items-center gap-3">
+              <div className="flex-1 h-px bg-lily/20" />
+              <span className="text-xs font-bold text-lily/40">OR</span>
+              <div className="flex-1 h-px bg-lily/20" />
+            </div>
+            <GitHubButton />
+          </>
+        )}
 
         {/* Sign-up link */}
         <p className="text-lily/70 text-sm font-semibold">

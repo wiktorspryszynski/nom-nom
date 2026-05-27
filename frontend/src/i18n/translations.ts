@@ -21,7 +21,8 @@ const pl = {
   loginOrSignUpLabel: 'lub zarejestruj się',
   loginNoAccount: 'Nie masz konta?',
   loginSignUpLink: 'Zarejestruj się',
-  loginGitHub: 'Zarejestruj się przez GitHub',
+  loginGitHub: 'Kontynuuj przez GitHub',
+  loginOrEmail: 'lub użyj e-maila',
 
   // ── Sign-up ────────────────────────────────────────────────────────────────
   signupTitle: 'Nowe konto',
@@ -252,7 +253,8 @@ const en: typeof pl = {
   loginOrSignUpLabel: 'or sign up',
   loginNoAccount: 'Don\'t have an account?',
   loginSignUpLink: 'Sign up',
-  loginGitHub: 'Sign up with GitHub',
+  loginGitHub: 'Continue with GitHub',
+  loginOrEmail: 'or use email',
 
   // ── Sign-up ────────────────────────────────────────────────────────────────
   signupTitle: 'New account',

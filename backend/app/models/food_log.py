@@ -1,8 +1,11 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String
 
 from app.database import Base
+from app.enums import FoodSourceType
+
+_enum_kw = dict(native_enum=False, create_constraint=False)
 
 
 class FoodLog(Base):
@@ -16,6 +19,5 @@ class FoodLog(Base):
     protein = Column(Float, nullable=False, default=0.0)
     fat = Column(Float, nullable=False, default=0.0)
     carbs = Column(Float, nullable=False, default=0.0)
-    # 'text' | 'photo' | 'manual' | 'usda'
-    source_type = Column(String, nullable=False, default="manual")
+    source_type = Column(SAEnum(FoodSourceType, **_enum_kw), nullable=False, default=FoodSourceType.manual)
     ai_confidence = Column(Float, nullable=True)
