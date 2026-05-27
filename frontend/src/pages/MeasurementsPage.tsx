@@ -67,8 +67,8 @@ function WeightTrend() {
 
 type BmiCategory = { labelKey: 'bmiUnderweight' | 'bmiNormal' | 'bmiOverweight' | 'bmiObese'; color: string; range: [number, number]; w: number }
 const BMI_SCALE: BmiCategory[] = [
-  { labelKey: 'bmiUnderweight', color: '#3ec9a7', range: [0,  20], w: 1   },
-  { labelKey: 'bmiNormal',      color: '#7d3ed0', range: [20, 25], w: 1.5 },
+  { labelKey: 'bmiUnderweight', color: '#3ec9a7', range: [0,    18.5], w: 1   },
+  { labelKey: 'bmiNormal',      color: '#7d3ed0', range: [18.5, 25],   w: 1.5 },
   { labelKey: 'bmiOverweight',  color: '#f7a84a', range: [25, 30], w: 1.5 },
   { labelKey: 'bmiObese',       color: '#ef4444', range: [30, 45], w: 1   },
 ]

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5174"
 
+    # Registration is closed by default. Set to a non-empty string to enable
+    # the /api/register endpoint behind an invite code.
+    register_invite_code: str = ""
+
     # Email notifications for demo requests (optional — leave empty to skip)
     smtp_host: str = ""
     smtp_port: int = 465

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD, NOMNOM_HAPPY } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
@@ -7,6 +7,7 @@ const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
 
 interface FormData {
+  inviteCode: string
   name: string
   email: string
   password: string
@@ -104,7 +105,7 @@ export default function SignUpPage() {
   const { t, lang } = useLanguage()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>({
-    name: '', email: '', password: '', birthDate: '',
+    inviteCode: '', name: '', email: '', password: '', birthDate: '',
     sex: '', height: '', weight: '', targetWeight: '',
     goalType: '', currentIntake: '', targetDate: '',
   })
@@ -119,6 +120,12 @@ export default function SignUpPage() {
 
   const nextStep = (e: React.FormEvent) => {
     e.preventDefault()
+    // Step 2: require an explicit goal type selection before proceeding.
+    if (step === 2 && !data.goalType) {
+      setError(t('signupSelectGoal'))
+      return
+    }
+    setError('')
     setStep(s => s + 1)
   }
 
@@ -139,6 +146,7 @@ export default function SignUpPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          invite_code: data.inviteCode,
           name: data.name,
           email: data.email,
           password: data.password,
@@ -150,7 +158,7 @@ export default function SignUpPage() {
           tdee_kcal: tdee,
           calorie_target: target,
           goal_type: data.goalType || 'maintain',
-          target_date_preset: data.targetDate,
+          // target_date_preset is a UI-only field; calorie_target is the derived value we persist.
           language: lang,
         }),
       })
@@ -178,7 +186,7 @@ export default function SignUpPage() {
   const PRESET_DAYS: Record<string, number> = { '3m': 91, '6m': 182, '12m': 365, 'none': 182 }
   const MIN_KCAL = data.sex === 'F' ? 1200 : 1500
 
-  const computeRecommendation = (): { kcal: number; delta: number } | null => {
+  const recommendation = useMemo((): { kcal: number; delta: number } | null => {
     const tdee = Number(data.currentIntake)
     const w = Number(data.weight)
     const tw = Number(data.targetWeight)
@@ -188,9 +196,7 @@ export default function SignUpPage() {
     const dailyDelta = Math.round(totalDelta / days)
     const recommended = tdee - dailyDelta
     return { kcal: recommended, delta: dailyDelta }
-  }
-
-  const recommendation = computeRecommendation()
+  }, [data.currentIntake, data.weight, data.targetWeight, data.targetDate, data.goalType])
 
   if (status === 'success') {
     const successLines = t('signupSuccessBody').split('\n')
@@ -238,6 +244,22 @@ export default function SignUpPage() {
         {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
+            {/* Invite code — required to gate open registration */}
+            <InputWrap
+              r1="2px 20px 4px 18px / 20px 2px 18px 4px"
+              r2="4px 16px 8px 20px / 16px 4px 20px 8px"
+              r3="8px 12px 4px 16px / 12px 8px 16px 4px"
+            >
+              <PlainInput
+                type="text"
+                placeholder={t('signupInviteCodePlaceholder')}
+                value={data.inviteCode}
+                onChange={set('inviteCode')}
+                required
+                borderRadius="2px 20px 4px 18px / 20px 2px 18px 4px"
+              />
+            </InputWrap>
+
             <InputWrap
               r1="4px 18px 6px 16px / 18px 4px 16px 6px"
               r2="6px 14px 10px 20px / 20px 6px 14px 4px"

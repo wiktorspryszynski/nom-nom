@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Utensils, Dumbbell, ChevronRight, Flame, Droplets, Beef,
   Send, CalendarDays, Camera,
@@ -284,11 +284,15 @@ export default function DashboardPage() {
   const [headerIcon] = useState(() => HEADER_ICONS[Math.floor(Math.random() * HEADER_ICONS.length)])
   const [nomState, setNomState] = useState<'default' | 'behind' | 'behind_question'>('default')
 
+  const nomTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  useEffect(() => () => { nomTimers.current.forEach(clearTimeout) }, [])
+
   const handleNomClick = () => {
     if (nomState !== 'default') return
     setNomState('behind')
-    setTimeout(() => setNomState('behind_question'), 1500)
-    setTimeout(() => setNomState('default'), 3500)
+    nomTimers.current.push(setTimeout(() => setNomState('behind_question'), 1500))
+    nomTimers.current.push(setTimeout(() => setNomState('default'), 3500))
   }
 
   const currentHeaderIcon = nomState === 'behind' ? NOMNOM_BEHIND

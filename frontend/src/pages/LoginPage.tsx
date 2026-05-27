@@ -581,8 +581,6 @@ export default function LoginPage() {
         {optionToDisplay === 4 &&
           <SignUpExplanation />
         }
-
-
       </div>
     </div>
   )
