@@ -112,8 +112,8 @@ def github_callback(body: GitHubCallbackRequest, db: Session = Depends(get_db)):
             detail="No verified email on your GitHub account. Please add one.",
         )
 
-    # 4. Find or create user
-    # Priority: match by github_id → match by email → create new
+    # 4. Find existing user
+    # Priority: match by github_id → match by email (link account) → needs signup
     user: User | None = db.query(User).filter(User.github_id == github_id).first()
 
     if user is None and email:
@@ -124,19 +124,15 @@ def github_callback(body: GitHubCallbackRequest, db: Session = Depends(get_db)):
             db.commit()
 
     if user is None:
-        # Brand-new account via GitHub
+        # Brand-new GitHub user — redirect to signup wizard to collect profile data.
+        # The frontend will store these values in sessionStorage and redirect to /register.
         name = gh_user.get("name") or gh_user.get("login") or "GitHub User"
-        user = User(
-            name=name,
-            email=email,
-            hashed_password=None,
-            github_id=github_id,
-            account_type="demo",
-            language="pl",
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        return {
+            "needs_signup": True,
+            "email": email,
+            "name": name,
+            "github_id": github_id,
+        }
 
     jwt = create_access_token({"sub": user.email})
     return {"access_token": jwt, "token_type": "bearer"}

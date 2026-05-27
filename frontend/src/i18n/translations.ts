@@ -222,9 +222,8 @@ const pl = {
   demoModalTitle: 'Masz ograniczone konto',
   demoModalCallsLabel: 'Wywołania AI — pozostało',
   demoModalCallsNote: 'Tekst, zdjęcia posiłków, generowanie jadłospisu',
-  demoModalBody: 'Konto demo ma dożywotni limit wywołań AI. Rejestracja jest bezpłatna i odblokowuje pełen dostęp.',
-  demoModalSignUp: 'Zarejestruj się — to bezpłatne',
-  demoModalContinue: 'Kontynuuj z kontem demo',
+  demoModalBody: 'Konta demo mają dożywotni limit 15 wywołań AI. Funkcje bez AI (pomiary, woda, dziennik ręczny) są nieograniczone.',
+  demoModalDismiss: 'Rozumiem',
 
   // ── 404 ───────────────────────────────────────────────────────────────────
   notFoundTitle: 'Strona nie istnieje',
@@ -454,9 +453,8 @@ const en: typeof pl = {
   demoModalTitle: 'You have a limited account',
   demoModalCallsLabel: 'AI calls — remaining',
   demoModalCallsNote: 'Text logging, food photos, meal plan generation',
-  demoModalBody: 'Demo accounts have a lifetime AI call limit. Signing up is free and unlocks full access.',
-  demoModalSignUp: 'Sign up — it\'s free',
-  demoModalContinue: 'Continue with demo account',
+  demoModalBody: 'Demo accounts are limited to 15 AI calls lifetime. Non-AI features (measurements, water, manual log) are unlimited.',
+  demoModalDismiss: 'Got it',
 
   // ── 404 ───────────────────────────────────────────────────────────────────
   notFoundTitle: 'Page not found',

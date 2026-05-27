@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 
@@ -7,7 +6,6 @@ const DEMO_LIMIT = 15
 export default function DemoLimitModal() {
   const { user, showDemoModal, setShowDemoModal } = useAuth()
   const { t } = useLanguage()
-  const navigate = useNavigate()
 
   if (!showDemoModal || !user || user.account_type !== 'demo') return null
 
@@ -17,11 +15,6 @@ export default function DemoLimitModal() {
   const dismiss = () => {
     sessionStorage.setItem('nomnom_demo_banner_seen', '1')
     setShowDemoModal(false)
-  }
-
-  const goSignUp = () => {
-    dismiss()
-    navigate('/register')
   }
 
   return (
@@ -68,21 +61,13 @@ export default function DemoLimitModal() {
           {t('demoModalBody')}
         </p>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-2 mt-1">
-          <button
-            onClick={goSignUp}
-            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-sm font-extrabold cursor-pointer"
-          >
-            {t('demoModalSignUp')}
-          </button>
-          <button
-            onClick={dismiss}
-            className="text-xs font-bold text-lily/40 hover:text-lily/60 transition-colors cursor-pointer py-1"
-          >
-            {t('demoModalContinue')}
-          </button>
-        </div>
+        {/* Single dismiss action */}
+        <button
+          onClick={dismiss}
+          className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-sm font-extrabold cursor-pointer mt-1"
+        >
+          {t('demoModalDismiss')}
+        </button>
       </div>
     </div>
   )

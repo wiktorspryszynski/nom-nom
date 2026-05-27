@@ -6,7 +6,9 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.enums import RegisteredVia
 from app.models.user import User
+from app.routers.auth import create_access_token
 from app.schemas.register import RegisterRequest
 
 router = APIRouter()
@@ -44,13 +46,20 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
+    # If github_id is provided, verify it isn't already linked to another account
+    if body.github_id and db.query(User).filter(User.github_id == body.github_id).first():
+        raise HTTPException(status_code=409, detail="GitHub account already registered")
+
     multiplier = _PROTEIN_MULTIPLIERS.get(body.goal_type, 1.6)
     protein_target = round(body.weight_kg * multiplier)
+
+    via_github = bool(body.github_id)
 
     user = User(
         name=body.name,
         email=body.email,
-        hashed_password=pwd_context.hash(body.password),
+        hashed_password=pwd_context.hash(body.password) if body.password else None,
+        github_id=body.github_id,
         tdee_kcal=body.tdee_kcal,
         calorie_target=body.calorie_target,
         weight_target=body.target_weight_kg,
@@ -62,7 +71,15 @@ def register(body: RegisterRequest, request: Request, db: Session = Depends(get_
         birth_date=body.birth_date,
         language=body.language,
         account_type="demo",
+        registered_via=RegisteredVia.github if via_github else RegisteredVia.email,
     )
     db.add(user)
     db.commit()
+
+    # GitHub users have no password — return a JWT immediately so the frontend
+    # can call loginWithToken() without needing a password-based login.
+    if via_github:
+        token = create_access_token({"sub": user.email})
+        return {"ok": True, "access_token": token, "token_type": "bearer"}
+
     return {"ok": True}

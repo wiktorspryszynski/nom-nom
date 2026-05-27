@@ -46,3 +46,8 @@ class MetricType(str, enum.Enum):
     water_percent = "water_percent"
     muscle_mass_percent = "muscle_mass_percent"
     water_glasses = "water_glasses"
+
+
+class RegisteredVia(str, enum.Enum):
+    email = "email"
+    github = "github"

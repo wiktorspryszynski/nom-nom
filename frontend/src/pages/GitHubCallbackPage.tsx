@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+export const GITHUB_PENDING_KEY = 'nomnom_github_pending'
+
 export default function GitHubCallbackPage() {
   const [searchParams] = useSearchParams()
   const { loginWithToken } = useAuth()
@@ -33,8 +35,20 @@ export default function GitHubCallbackPage() {
           throw new Error(data.detail || 'GitHub login failed')
         }
         const data = await res.json()
-        await loginWithToken(data.access_token)
-        navigate('/', { replace: true })
+
+        if (data.needs_signup) {
+          // New GitHub user — redirect to signup wizard with pre-filled data
+          sessionStorage.setItem(GITHUB_PENDING_KEY, JSON.stringify({
+            email: data.email,
+            name: data.name,
+            github_id: data.github_id,
+          }))
+          navigate('/register?via=github', { replace: true })
+        } else {
+          // Existing user — log in directly
+          await loginWithToken(data.access_token)
+          navigate('/', { replace: true })
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'GitHub login failed')
         setTimeout(() => navigate('/login?error=github_failed', { replace: true }), 2500)

@@ -2,7 +2,7 @@ from sqlalchemy import Column, Enum as SAEnum, Float, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
-from app.enums import AccountType, GoalType, Language, Sex
+from app.enums import AccountType, GoalType, Language, RegisteredVia, Sex
 
 _enum_kw = dict(native_enum=False, create_constraint=False)
 
@@ -28,3 +28,4 @@ class User(Base):
     account_type = Column(SAEnum(AccountType, **_enum_kw), nullable=False, default=AccountType.demo, server_default=AccountType.demo)
     # Persistent lifetime AI call counter for demo accounts (never resets)
     demo_ai_calls_used = Column(Integer, nullable=False, default=0, server_default="0")
+    registered_via = Column(SAEnum(RegisteredVia, **_enum_kw), nullable=True)

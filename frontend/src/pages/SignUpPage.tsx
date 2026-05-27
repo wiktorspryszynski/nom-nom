@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
 import { useAuth } from '../context/AuthContext'
+import { GITHUB_PENDING_KEY } from './GitHubCallbackPage'
 
 const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
@@ -70,12 +71,13 @@ function UnitInput({
 }
 
 function PlainInput(props: React.InputHTMLAttributes<HTMLInputElement> & { borderRadius: string }) {
-  const { borderRadius, ...rest } = props
+  const { borderRadius, readOnly, ...rest } = props
   return (
     <input
       {...rest}
+      readOnly={readOnly}
       style={{ borderRadius }}
-      className="w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none"
+      className={`w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none ${readOnly ? 'opacity-50 cursor-default select-none' : ''}`}
     />
   )
 }
@@ -161,7 +163,8 @@ function GitHubSignUpButton() {
 
 export default function SignUpPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const [searchParams] = useSearchParams()
+  const { login, loginWithToken } = useAuth()
   const { t, lang, setLang } = useLanguage()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>({
@@ -173,6 +176,22 @@ export default function SignUpPage() {
   const [error, setError] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
   const [calorieTarget, setCalorieTarget] = useState<number | null>(null)
+  // GitHub OAuth path
+  const [githubId, setGithubId] = useState<string | null>(null)
+  const viaGitHub = Boolean(githubId)
+
+  // On mount: read pending GitHub data from sessionStorage if redirected from OAuth
+  useEffect(() => {
+    if (searchParams.get('via') !== 'github') return
+    const raw = sessionStorage.getItem(GITHUB_PENDING_KEY)
+    if (!raw) return
+    try {
+      const pending = JSON.parse(raw) as { email: string; name: string; github_id: string }
+      setData(d => ({ ...d, email: pending.email, name: pending.name }))
+      setGithubId(pending.github_id)
+      sessionStorage.removeItem(GITHUB_PENDING_KEY)
+    } catch { /* ignore */ }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (field: keyof FormData) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -183,7 +202,7 @@ export default function SignUpPage() {
 
   const nextStep = (e: React.FormEvent) => {
     e.preventDefault()
-    if (step === 1 && !isPasswordStrong(data.password)) {
+    if (step === 1 && !viaGitHub && !isPasswordStrong(data.password)) {
       setError(t('signupPasswordTooWeak'))
       return
     }
@@ -209,29 +228,42 @@ export default function SignUpPage() {
     const tdee = Number(data.currentIntake)
     const target = calorieTarget ?? tdee
     try {
+      const body: Record<string, unknown> = {
+        name: data.name,
+        email: data.email,
+        birth_date: data.birthDate || null,
+        sex: data.sex,
+        height_cm: Number(data.height),
+        weight_kg: Number(data.weight),
+        target_weight_kg: Number(data.targetWeight),
+        tdee_kcal: tdee,
+        calorie_target: target,
+        goal_type: data.goalType || 'maintain',
+        language: lang,
+      }
+      if (viaGitHub) {
+        body.github_id = githubId
+      } else {
+        body.password = data.password
+      }
+
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-          birth_date: data.birthDate || null,
-          sex: data.sex,
-          height_cm: Number(data.height),
-          weight_kg: Number(data.weight),
-          target_weight_kg: Number(data.targetWeight),
-          tdee_kcal: tdee,
-          calorie_target: target,
-          goal_type: data.goalType || 'maintain',
-          // target_date_preset is a UI-only field; calorie_target is the derived value we persist.
-          language: lang,
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
-      // Auto-login so the user lands straight in the app
-      await login(data.email, data.password)
-      navigate('/')
+      const result = await res.json()
+
+      if (viaGitHub && result.access_token) {
+        // GitHub users: backend returns a token, use it directly
+        await loginWithToken(result.access_token)
+        navigate('/')
+      } else {
+        // Email users: log in with password
+        await login(data.email, data.password)
+        navigate('/')
+      }
     } catch {
       setStatus('error')
       setError(t('signupError'))
@@ -303,7 +335,8 @@ export default function SignUpPage() {
         {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
-            {import.meta.env.VITE_GITHUB_CLIENT_ID && (
+            {/* GitHub button only shown when NOT already coming from GitHub OAuth */}
+            {!viaGitHub && import.meta.env.VITE_GITHUB_CLIENT_ID && (
               <>
                 <GitHubSignUpButton />
                 <div className="flex items-center gap-3">
@@ -324,6 +357,7 @@ export default function SignUpPage() {
                 value={data.name}
                 onChange={set('name')}
                 required
+                readOnly={viaGitHub}
                 borderRadius="4px 18px 6px 16px / 18px 4px 16px 6px"
               />
             </InputWrap>
@@ -339,25 +373,31 @@ export default function SignUpPage() {
                 value={data.email}
                 onChange={set('email')}
                 required
+                readOnly={viaGitHub}
                 borderRadius="16px 5px 18px 4px / 5px 16px 4px 18px"
               />
             </InputWrap>
 
-            <InputWrap
-              r1="12px 8px 14px 6px / 8px 12px 6px 14px"
-              r2="10px 14px 8px 16px / 14px 10px 16px 8px"
-              r3="16px 6px 12px 10px / 6px 16px 10px 12px"
-            >
-              <PlainInput
-                type="password"
-                placeholder={t('signupPasswordPlaceholder')}
-                value={data.password}
-                onChange={set('password')}
-                required
-                borderRadius="12px 8px 14px 6px / 8px 12px 6px 14px"
-              />
-            </InputWrap>
-            <PasswordStrength password={data.password} />
+            {/* Password field — hidden for GitHub signups */}
+            {!viaGitHub && (
+              <>
+                <InputWrap
+                  r1="12px 8px 14px 6px / 8px 12px 6px 14px"
+                  r2="10px 14px 8px 16px / 14px 10px 16px 8px"
+                  r3="16px 6px 12px 10px / 6px 16px 10px 12px"
+                >
+                  <PlainInput
+                    type="password"
+                    placeholder={t('signupPasswordPlaceholder')}
+                    value={data.password}
+                    onChange={set('password')}
+                    required
+                    borderRadius="12px 8px 14px 6px / 8px 12px 6px 14px"
+                  />
+                </InputWrap>
+                <PasswordStrength password={data.password} />
+              </>
+            )}
 
             <InputWrap
               r1="8px 14px 4px 18px / 14px 8px 18px 4px"

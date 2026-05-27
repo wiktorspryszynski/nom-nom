@@ -458,7 +458,7 @@ export default function LoginPage() {
           <>
             <div className="w-full flex items-center gap-3">
               <div className="flex-1 h-px bg-lily/20" />
-              <span className="text-xs font-bold text-lily/40">OR</span>
+              <span className="text-xs font-bold text-lily/40">{lang === 'pl' ? 'LUB' : 'OR'}</span>
               <div className="flex-1 h-px bg-lily/20" />
             </div>
             <GitHubButton />
