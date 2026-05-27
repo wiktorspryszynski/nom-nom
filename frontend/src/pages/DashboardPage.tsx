@@ -469,9 +469,9 @@ export default function DashboardPage() {
                   {t('dashboardPlannerLink')} <ChevronRight size={12} />
                 </a>
               </div>
-              <p className="text-sm font-semibold text-lily/40 text-center py-3">
+              <a href="/planner" className="block text-sm font-semibold text-lily/40 hover:text-lily/70 transition-colors text-center py-3">
                 {t('dashboardPlannerLink')} →
-              </p>
+              </a>
             </div>
 
             {/* ── Log entries ── */}

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import React, { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
 import { useAuth } from '../context/AuthContext'
@@ -137,35 +137,37 @@ function PasswordStrength({ password }: { password: string }) {
 
 export default function SignUpPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { login, loginWithToken } = useAuth()
   const { t, lang, setLang } = useLanguage()
   const [step, setStep] = useState(1)
-  const [data, setData] = useState<FormData>({
-    name: '', email: '', password: '', birthDate: '',
-    sex: '', height: '', weight: '', targetWeight: '',
-    goalType: '', currentIntake: '', targetDate: '',
+  const [data, setData] = useState<FormData>(() => {
+    const base: FormData = { name: '', email: '', password: '', birthDate: '', sex: '', height: '', weight: '', targetWeight: '', goalType: '', currentIntake: '', targetDate: '' }
+    if (new URLSearchParams(window.location.search).get('via') !== 'github') return base
+    try {
+      const raw = sessionStorage.getItem(GITHUB_PENDING_KEY)
+      if (!raw) return base
+      const pending = JSON.parse(raw) as { email: string; name: string; github_id: string }
+      return { ...base, email: pending.email, name: pending.name }
+    } catch { return base }
   })
+
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
   const [calorieTarget, setCalorieTarget] = useState<number | null>(null)
-  // GitHub OAuth path
-  const [githubId, setGithubId] = useState<string | null>(null)
-  const viaGitHub = Boolean(githubId)
 
-  // On mount: read pending GitHub data from sessionStorage if redirected from OAuth
-  useEffect(() => {
-    if (searchParams.get('via') !== 'github') return
-    const raw = sessionStorage.getItem(GITHUB_PENDING_KEY)
-    if (!raw) return
+  // GitHub OAuth path
+  const [githubId] = useState<string | null>(() => {
+    if (new URLSearchParams(window.location.search).get('via') !== 'github') return null
     try {
+      const raw = sessionStorage.getItem(GITHUB_PENDING_KEY)
+      if (!raw) return null
       const pending = JSON.parse(raw) as { email: string; name: string; github_id: string }
-      setData(d => ({ ...d, email: pending.email, name: pending.name }))
-      setGithubId(pending.github_id)
       sessionStorage.removeItem(GITHUB_PENDING_KEY)
-    } catch { /* ignore */ }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+      return pending.github_id
+    } catch { return null }
+  })
+  const viaGitHub = Boolean(githubId)
 
   const set = (field: keyof FormData) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
