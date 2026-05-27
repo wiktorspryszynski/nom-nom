@@ -7,7 +7,6 @@ const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
 
 interface FormData {
-  inviteCode: string
   name: string
   email: string
   password: string
@@ -105,7 +104,7 @@ export default function SignUpPage() {
   const { t, lang } = useLanguage()
   const [step, setStep] = useState(1)
   const [data, setData] = useState<FormData>({
-    inviteCode: '', name: '', email: '', password: '', birthDate: '',
+    name: '', email: '', password: '', birthDate: '',
     sex: '', height: '', weight: '', targetWeight: '',
     goalType: '', currentIntake: '', targetDate: '',
   })
@@ -146,7 +145,6 @@ export default function SignUpPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          invite_code: data.inviteCode,
           name: data.name,
           email: data.email,
           password: data.password,
@@ -244,22 +242,6 @@ export default function SignUpPage() {
         {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
-            {/* Invite code — required to gate open registration */}
-            <InputWrap
-              r1="2px 20px 4px 18px / 20px 2px 18px 4px"
-              r2="4px 16px 8px 20px / 16px 4px 20px 8px"
-              r3="8px 12px 4px 16px / 12px 8px 16px 4px"
-            >
-              <PlainInput
-                type="text"
-                placeholder={t('signupInviteCodePlaceholder')}
-                value={data.inviteCode}
-                onChange={set('inviteCode')}
-                required
-                borderRadius="2px 20px 4px 18px / 20px 2px 18px 4px"
-              />
-            </InputWrap>
-
             <InputWrap
               r1="4px 18px 6px 16px / 18px 4px 16px 6px"
               r2="6px 14px 10px 20px / 20px 6px 14px 4px"

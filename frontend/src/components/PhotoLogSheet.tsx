@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, RotateCcw, Check, Loader2, AlertCircle } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { tracker } from '../lib/api'
 
 interface ParsedFood {
   name: string
@@ -87,11 +88,24 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
   const handleSave = async () => {
     if (!food) return
     setSaving(true)
-    // TODO: POST to /api/tracker/log with the confirmed food data
-    await new Promise(r => setTimeout(r, 600))
-    setSaving(false)
-    onSaved?.(food)
-    onClose()
+    try {
+      await tracker.saveLog({
+        description: food.name,
+        kcal: food.kcal,
+        protein: food.protein,
+        fat: food.fat,
+        carbs: food.carbs,
+        source_type: 'photo',
+        ai_confidence: food.confidence,
+      })
+      onSaved?.(food)
+      onClose()
+    } catch {
+      setErrorMsg('Nie udało się zapisać wpisu. Spróbuj ponownie.')
+      setStatus('error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const open = file !== null

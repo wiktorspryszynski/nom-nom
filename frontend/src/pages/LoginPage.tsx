@@ -401,7 +401,19 @@ export default function LoginPage() {
 
   const LOGO_DEFAULT = SMALL_ICON_NO_BG
   const LOGO_ACTIVE = NOMNOM_SMILING
-  const optionToDisplay: number | null = null
+
+  const handleDemoLogin = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      await login('demo@nomnom.app', 'demo1234')
+      navigate('/')
+    } catch {
+      setError(t('loginError'))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -535,52 +547,34 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* SIGN-UP OPTION 1 — text link. */}
-        {optionToDisplay === 1 && (
-          <p className="text-lily/70 text-sm font-semibold">
-            {t('loginNoAccount')}{' '}
-            <button type="button" className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer">
-              {t('loginSignUpLink')}
-            </button>
-          </p>
-        )}
+        {/* Sign-up link */}
+        <p className="text-lily/70 text-sm font-semibold">
+          {t('loginNoAccount')}{' '}
+          <button
+            type="button"
+            onClick={() => navigate('/register')}
+            className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer"
+          >
+            {t('loginSignUpLink')}
+          </button>
+        </p>
 
-        {/* SIGN-UP OPTION 2 — divider + GitHub button. */}
-        {optionToDisplay === 2 && (
-          <div className="w-full flex flex-col items-center gap-3">
-            <div className="w-full flex items-center gap-3">
-              <div className="flex-1 h-px bg-lily/30" />
-              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">{t('loginOrSignUpLabel')}</span>
-              <div className="flex-1 h-px bg-lily/30" />
-            </div>
-            <button
-              type="button"
-              className="btn-fill-dark w-full flex items-center justify-center gap-2 bg-white border-2 border-black text-black rounded-full py-3 text-base font-extrabold cursor-pointer"
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 shrink-0">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-              {t('loginGitHub')}
-            </button>
+        {/* Demo account shortcut */}
+        <div className="w-full flex flex-col items-center gap-3">
+          <div className="w-full flex items-center gap-3">
+            <div className="flex-1 h-px bg-lily/30" />
+            <span className="text-xs font-bold text-lily/50 whitespace-nowrap">{t('loginOrDemoLabel')}</span>
+            <div className="flex-1 h-px bg-lily/30" />
           </div>
-        )}
-
-        {/* SIGN-UP OPTION 3 — demo request form. */}
-        {optionToDisplay === 3 && (
-          <div className="w-full flex flex-col items-center gap-3">
-            <div className="w-full flex items-center gap-3">
-              <div className="flex-1 h-px bg-lily/30" />
-              <span className="text-xs font-bold text-lily/50 whitespace-nowrap">{t('loginOrDemoLabel')}</span>
-              <div className="flex-1 h-px bg-lily/30" />
-            </div>
-            <DemoRequestForm />
-          </div>
-        )}
-
-        {/* SIGN-UP OPTION 4 — explanation why sign-up is unavailable. */}
-        {optionToDisplay === 4 &&
-          <SignUpExplanation />
-        }
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            disabled={loading}
+            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
+          >
+            {t('loginDemoButton')}
+          </button>
+        </div>
       </div>
     </div>
   )

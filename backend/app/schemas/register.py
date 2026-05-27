@@ -2,7 +2,6 @@ from pydantic import BaseModel, EmailStr
 
 
 class RegisterRequest(BaseModel):
-    invite_code: str
     name: str
     email: EmailStr
     password: str

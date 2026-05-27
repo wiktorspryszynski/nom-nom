@@ -23,16 +23,17 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5174"
 
-    # Registration is closed by default. Set to a non-empty string to enable
-    # the /api/register endpoint behind an invite code.
-    register_invite_code: str = ""
-
     # Email notifications for demo requests (optional — leave empty to skip)
     smtp_host: str = ""
     smtp_port: int = 465
     smtp_user: str = ""
     smtp_password: str = ""
     notify_email: str = ""
+
+    @computed_field
+    @property
+    def ai_available(self) -> bool:
+        return bool(self.anthropic_api_key)
 
     class Config:
         env_file = ".env"

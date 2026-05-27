@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.register import RegisterRequest
@@ -16,11 +15,6 @@ _PROTEIN_MULTIPLIERS = {'lose': 2.0, 'maintain': 1.6, 'build': 2.2}
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
-    # Registration is gated behind an invite code. If no code is configured the
-    # endpoint is effectively disabled (every request will be rejected).
-    if not settings.register_invite_code or body.invite_code != settings.register_invite_code:
-        raise HTTPException(status_code=403, detail="Invalid or missing invite code")
-
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
