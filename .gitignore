@@ -2,6 +2,9 @@
 .env
 *.env
 
+# Local Docker Compose overrides (use docker-compose.override.yml.example as a template)
+docker-compose.override.yml
+
 .claude/
 
 # Python

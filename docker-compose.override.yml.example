@@ -1,0 +1,8 @@
+# Local development overrides — merged automatically by Docker Compose.
+# Never commit secrets or production config here.
+# This file is gitignored; copy from docker-compose.override.yml.example if missing.
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"  # expose Postgres to localhost for GUI tools (TablePlus, DBeaver, etc.)
