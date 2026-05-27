@@ -325,17 +325,7 @@ export default function SignUpPage() {
         {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
-            {/* GitHub button only shown when NOT already coming from GitHub OAuth */}
-            {!viaGitHub && import.meta.env.VITE_GITHUB_CLIENT_ID && (
-              <>
-                <GitHubSignUpButton />
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-lily/20" />
-                  <span className="text-xs font-bold text-lily/40">{t('loginOrEmail').toUpperCase()}</span>
-                  <div className="flex-1 h-px bg-lily/20" />
-                </div>
-              </>
-            )}
+
             <InputWrap
               r1="4px 18px 6px 16px / 18px 4px 16px 6px"
               r2="6px 14px 10px 20px / 20px 6px 14px 4px"
