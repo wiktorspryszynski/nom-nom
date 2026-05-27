@@ -1,6 +1,7 @@
 # NomNom
 
-A meal tracking and planning PWA for two people. You describe what you ate (or photograph it), the app extracts the nutrition data and shows you where you stand against your daily targets — without asking follow-up questions.
+A meal tracking and planning PWA.<br>
+You describe what you ate (or photograph it), the app extracts the nutrition data and shows you where you stand against your daily targets — without asking follow-up questions.
 
 **Live:** https://fit.spryszynski.pl
 
@@ -177,7 +178,7 @@ COMPOSE_PROFILES=prod docker compose up --build
 
 ### Haiku for text, Sonnet for vision
 
-Text parsing (food descriptions, exercise entries) uses Claude Haiku 4.5. Extracting structured nutrition data from free-form text is well within Haiku's capability and costs roughly 10× less per token than Sonnet. Photo analysis requires Sonnet 4.6 — Haiku does not support image inputs. Splitting by modality keeps AI costs under ~$2/month for two active users.
+Text parsing (food descriptions, exercise entries) uses Claude Haiku 4.5. Extracting structured nutrition data from free-form text is well within Haiku's capability and costs roughly 10× less per token than Sonnet. Photo analysis requires Sonnet 4.6 — Haiku does not support image inputs.
 
 ### Direct LLM estimation instead of a nutrition API
 
