@@ -53,7 +53,7 @@ function DesktopQRBanner({ open, onClose }: { open: boolean; onClose: () => void
         <img src={ICON_BG} alt="NomNom" className="w-16 h-16 rounded-2xl" />
 
         <div className="text-center">
-          <h2 className="text-xl font-extrabold text-lily">{t('desktopBannerTitle')}</h2>
+          <h2 className="text-3xl font-extrabold text-lily">{t('desktopBannerTitle')}</h2>
           <p className="text-sm font-semibold text-lily/60 mt-1">{t('desktopBannerBody')}</p>
         </div>
 
@@ -118,6 +118,7 @@ function useSwipeDown(onDismiss: () => void, threshold = 80) {
   const dragYRef = useRef(0)
   const dragging = useRef(false)
   const [dragY, setDragY] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const onDismissRef = useRef(onDismiss)
   useEffect(() => { onDismissRef.current = onDismiss })
 
@@ -126,6 +127,7 @@ function useSwipeDown(onDismiss: () => void, threshold = 80) {
     if (!el) return
 
     const onTouchStart = (e: TouchEvent) => {
+      setIsDragging(true)
       startY.current = e.touches[0].clientY
       dragging.current = true
     }
@@ -140,6 +142,7 @@ function useSwipeDown(onDismiss: () => void, threshold = 80) {
 
     const onTouchEnd = () => {
       dragging.current = false
+      setIsDragging(false)
       if (dragYRef.current >= threshold) onDismissRef.current()
       dragYRef.current = 0
       setDragY(0)
@@ -157,7 +160,7 @@ function useSwipeDown(onDismiss: () => void, threshold = 80) {
 
   const sheetStyle: React.CSSProperties = {
     transform: `translateY(${dragY}px)`,
-    transition: dragging.current ? 'none' : 'transform 0.3s ease',
+    transition: isDragging ? 'none' : 'transform 0.3s ease',
   }
 
   return { ref, sheetStyle }
