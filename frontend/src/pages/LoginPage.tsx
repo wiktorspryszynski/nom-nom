@@ -338,6 +338,9 @@ export default function LoginPage() {
     }
   }
 
+  console.log('LoginPage rendered')
+  console.log(import.meta.env.VITE_GITHUB_CLIENT_ID ? 'GitHub OAuth enabled' : 'GitHub OAuth disabled')
+
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
       <DesktopQRBanner open={showQR} onClose={() => { localStorage.setItem(DESKTOP_DISMISSED_KEY, '1'); setShowQR(false) }} />
