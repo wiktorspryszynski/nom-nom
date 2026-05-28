@@ -21,6 +21,8 @@ const pl = {
   loginOrSignUpLabel: 'lub zarejestruj się',
   loginNoAccount: 'Nie masz konta?',
   loginSignUpLink: 'Zarejestruj się',
+  loginGitHubOnlyLink: 'Jak mogę założyć konto?',
+  loginGitHubOnlyMsg: 'Rejestracja na ten moment jest możliwa tylko przez GitHub, dziękujemy za zrozumienie.',
   loginGitHub: 'Kontynuuj przez GitHub',
   loginOrEmail: 'lub użyj e-maila',
 
@@ -235,7 +237,9 @@ const pl = {
   notFoundBack: 'Wróć do strony głównej',
 } as const
 
-const en: typeof pl = {
+type Translations = { readonly [K in keyof typeof pl]: string | readonly string[] }
+
+const en: Translations = {
   // ── Login ──────────────────────────────────────────────────────────────────
   loginEmail: 'E-mail',
   loginPassword: 'Password',
@@ -256,6 +260,8 @@ const en: typeof pl = {
   loginOrSignUpLabel: 'or sign up',
   loginNoAccount: 'Don\'t have an account?',
   loginSignUpLink: 'Sign up',
+  loginGitHubOnlyLink: 'How can I make an account?',
+  loginGitHubOnlyMsg: 'Accounts can only be created via GitHub at this time, thank you for your understanding.',
   loginGitHub: 'Continue with GitHub',
   loginOrEmail: 'or use email',
 
@@ -470,5 +476,5 @@ const en: typeof pl = {
   notFoundBack: 'Go back home',
 }
 
-export const translations: Record<Lang, typeof pl> = { pl, en }
+export const translations: Record<Lang, Translations> = { pl, en }
 export type TranslationKey = keyof typeof pl

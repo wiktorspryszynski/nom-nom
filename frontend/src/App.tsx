@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { GITHUB_ONLY } from './config'
 import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
@@ -11,6 +12,15 @@ import NotFoundPage from './pages/NotFoundPage'
 import GitHubCallbackPage from './pages/GitHubCallbackPage'
 import DemoLimitModal from './components/DemoLimitModal'
 
+function RegisterRoute() {
+  const { token } = useAuth()
+  const { search } = useLocation()
+  const viaGitHub = new URLSearchParams(search).get('via') === 'github'
+  if (token) return <Navigate to="/" replace />
+  if (GITHUB_ONLY && !viaGitHub) return <Navigate to="/login" replace />
+  return <SignUpPage />
+}
+
 function AppShell() {
   const { token } = useAuth()
   return (
@@ -18,7 +28,7 @@ function AppShell() {
       <DemoLimitModal />
       <Routes>
         <Route path="/login"    element={token ? <Navigate to="/" replace /> : <LoginPage />} />
-        <Route path="/register" element={token ? <Navigate to="/" replace /> : <SignUpPage />} />
+        <Route path="/register" element={<RegisterRoute />} />
         {/* GitHub OAuth callback — always accessible regardless of auth state */}
         <Route path="/auth/github/callback" element={<GitHubCallbackPage />} />
         {token ? (

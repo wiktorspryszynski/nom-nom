@@ -32,6 +32,8 @@ function GitHubButton() {
   )
 }
 
+import { GITHUB_ONLY } from '../config'
+
 const APP_URL = 'https://fit.spryszynski.pl'
 const APP_URL_QR = `${APP_URL}?ref=qr`
 const DESKTOP_DISMISSED_KEY = 'nomnom_desktop_dismissed'
@@ -311,6 +313,7 @@ export default function LoginPage() {
   const [bouncing, setBouncing] = useState(false)
   const isDesktop = useIsDesktop()
   const [showQR, setShowQR] = useState(() => isDesktop && localStorage.getItem(DESKTOP_DISMISSED_KEY) !== '1')
+  const [showGitHubOnlyMsg, setShowGitHubOnlyMsg] = useState(false)
 
   const handleTitleClick = () => {
     if (bouncing) return
@@ -466,16 +469,33 @@ export default function LoginPage() {
         )}
 
         {/* Sign-up link */}
-        <p className="text-lily/70 text-sm font-semibold">
-          {t('loginNoAccount')}{' '}
-          <button
-            type="button"
-            onClick={() => navigate('/register')}
-            className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer"
-          >
-            {t('loginSignUpLink')}
-          </button>
-        </p>
+        {GITHUB_ONLY ? (
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-lily/70 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setShowGitHubOnlyMsg(o => !o)}
+                className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer"
+              >
+                {t('loginGitHubOnlyLink')}
+              </button>
+            </p>
+            {showGitHubOnlyMsg && (
+              <p className="text-center text-sm font-semibold text-lily/60">{t('loginGitHubOnlyMsg')}</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-lily/70 text-sm font-semibold">
+            {t('loginNoAccount')}{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="text-lily font-extrabold underline underline-offset-2 hover:text-lily/80 transition-colors cursor-pointer"
+            >
+              {t('loginSignUpLink')}
+            </button>
+          </p>
+        )}
 
       </div>
     </div>
