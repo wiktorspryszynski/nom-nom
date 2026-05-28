@@ -17,9 +17,17 @@ export default function GitHubCallbackPage() {
 
     const code = searchParams.get('code')
     const state = searchParams.get('state')
+    const ghError = searchParams.get('error')
 
     if (!code) {
-      navigate('/login?error=github_failed', { replace: true })
+      const msg = ghError === 'access_denied'
+        ? 'Access denied — you cancelled the GitHub login.'
+        : ghError === 'redirect_uri_mismatch'
+        ? 'OAuth redirect URI mismatch — check GitHub app settings.'
+        : ghError
+        ? `GitHub error: ${ghError}`
+        : 'GitHub login failed'
+      setError(msg)
       return
     }
 
@@ -51,7 +59,6 @@ export default function GitHubCallbackPage() {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'GitHub login failed')
-        setTimeout(() => navigate('/login?error=github_failed', { replace: true }), 2500)
       }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -61,8 +68,13 @@ export default function GitHubCallbackPage() {
       <div className="flex flex-col items-center gap-4 text-lily">
         {error ? (
           <>
-            <p className="text-lg font-bold">{error}</p>
-            <p className="text-sm opacity-60">Redirecting to login…</p>
+            <p className="text-lg font-bold text-center">{error}</p>
+            <button
+              onClick={() => navigate('/login', { replace: true })}
+              className="mt-2 text-sm font-bold underline underline-offset-2 opacity-60 hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              Back to login
+            </button>
           </>
         ) : (
           <>
