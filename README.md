@@ -205,9 +205,9 @@ Body metric types (weight, body fat %, water %, muscle mass) are stored as `(met
 
 One `docker-compose.yml` with two profiles (`dev`, `prod`) instead of a base file plus `docker-compose.override.yml`. Dev mounts source directories for hot reload; prod builds optimised images. Profiles make the intent explicit at invocation time and avoid the file-merge confusion that overrides introduce.
 
-### No CI/CD
+### CI/CD
 
-There is no automated pipeline. Deploy workflow: `git pull` on the VPS, `docker compose up --build`. For a side project with two users and no uptime SLA, the setup cost of GitHub Actions is not justified at this stage.
+Pushes to `main` now trigger an SSH deploy workflow that updates the production checkout and runs `docker-compose up --build -d` on the VPS.
 
 ---
 
