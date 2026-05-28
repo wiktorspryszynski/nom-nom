@@ -1,28 +1,27 @@
-import { useState } from 'react'
-import { Scale, TrendingDown, TrendingUp, Minus, ChevronDown, ChevronUp, Ruler } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Scale, TrendingDown, TrendingUp, Minus, ChevronDown, ChevronUp, Ruler, Loader2 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import { useLanguage } from '../context/LanguageContext'
+import { measurements, profile, type Measurement, type UserProfile } from '../lib/api'
 import { NOMNOM_WEIGHING, NOMNOM_MEASURING } from '../assets'
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_HEIGHT_CM = 178
+interface WeightEntry { date: string; kg: number }
 
-const weightHistory = [
-  { date: '19.05', kg: 75.5 },
-  { date: '17.05', kg: 75.8 },
-  { date: '15.05', kg: 76.1 },
-  { date: '12.05', kg: 76.4 },
-  { date: '10.05', kg: 76.0 },
-  { date: '07.05', kg: 76.8 },
-  { date: '05.05', kg: 77.2 },
-]
+function groupByDate(rows: Measurement[]): WeightEntry[] {
+  return rows
+    .filter(r => r.metric_type === 'weight_kg')
+    .slice(0, 10)
+    .map(r => ({
+      date: new Date(r.measured_at).toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' }),
+      kg: r.value,
+    }))
+}
 
-const latestBodyMetrics = { bodyFat: 22.1, water: 54.8, muscle: 41.3 }
-// ─────────────────────────────────────────────────────────────────────────────
-
-function WeightTrend() {
+function WeightTrend({ history }: { history: WeightEntry[] }) {
   const { t } = useLanguage()
-  const vals = weightHistory.map(e => e.kg)
+  if (history.length < 2) return null
+
+  const vals = history.map(e => e.kg)
   const min = Math.min(...vals) - 0.5
   const max = Math.max(...vals) + 0.5
   const W = 280
@@ -57,7 +56,7 @@ function WeightTrend() {
         <text x={toX(vals.length - 1)} y={toY(vals[vals.length - 1]) - 8} textAnchor="middle" fontSize="10" fill="#7d3ed099" fontWeight="700">{vals[vals.length - 1]}</text>
       </svg>
       <div className="flex justify-between mt-2">
-        {weightHistory.map(e => (
+        {history.map(e => (
           <span key={e.date} className="text-[9px] font-bold text-lily/30">{e.date}</span>
         ))}
       </div>
@@ -77,9 +76,9 @@ function getBmiCategory(bmi: number): BmiCategory {
   return BMI_SCALE.find(c => bmi < c.range[1]) ?? BMI_SCALE[BMI_SCALE.length - 1]
 }
 
-function BmiCard({ weightKg }: { weightKg: number }) {
+function BmiCard({ weightKg, heightCm }: { weightKg: number; heightCm: number }) {
   const { t } = useLanguage()
-  const heightM = MOCK_HEIGHT_CM / 100
+  const heightM = heightCm / 100
   const bmi = weightKg / (heightM * heightM)
   const category = getBmiCategory(bmi)
 
@@ -94,8 +93,8 @@ function BmiCard({ weightKg }: { weightKg: number }) {
       const c = BMI_SCALE[i]
       if (v <= c.range[1] || i === BMI_SCALE.length - 1) {
         const segEnd = visualStarts[i] + (c.w / totalW) * 100
-        const t = Math.min(Math.max((v - c.range[0]) / (c.range[1] - c.range[0]), 0), 1)
-        return visualStarts[i] + t * (segEnd - visualStarts[i])
+        const frac = Math.min(Math.max((v - c.range[0]) / (c.range[1] - c.range[0]), 0), 1)
+        return visualStarts[i] + frac * (segEnd - visualStarts[i])
       }
     }
     return 98
@@ -107,7 +106,7 @@ function BmiCard({ weightKg }: { weightKg: number }) {
       <div className="flex items-center gap-2 mb-4">
         <Ruler size={14} className="text-lily/50" />
         <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('measurementsBmi')}</h2>
-        <span className="text-xs font-bold text-lily/30 ml-auto">{MOCK_HEIGHT_CM} cm</span>
+        <span className="text-xs font-bold text-lily/30 ml-auto">{heightCm} cm</span>
       </div>
 
       <div className="flex items-end gap-3 mb-4">
@@ -154,12 +153,29 @@ function BmiCard({ weightKg }: { weightKg: number }) {
   )
 }
 
-function BodyMetricsForm() {
+function BodyMetricsForm({ initial, onSave }: {
+  initial: { bodyFat: number | null; water: number | null; muscle: number | null }
+  onSave: (metrics: Record<string, number>) => Promise<void>
+}) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
-  const [fat, setFat] = useState(String(latestBodyMetrics.bodyFat))
-  const [water, setWater] = useState(String(latestBodyMetrics.water))
-  const [muscle, setMuscle] = useState(String(latestBodyMetrics.muscle))
+  const [fat, setFat] = useState(String(initial.bodyFat ?? ''))
+  const [water, setWater] = useState(String(initial.water ?? ''))
+  const [muscle, setMuscle] = useState(String(initial.muscle ?? ''))
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    const metrics: Record<string, number> = {}
+    if (fat)    metrics.body_fat_percent = parseFloat(fat)
+    if (water)  metrics.water_percent = parseFloat(water)
+    if (muscle) metrics.muscle_mass_percent = parseFloat(muscle)
+    try {
+      await onSave(metrics)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl border-[2px] border-lily/15 overflow-hidden">
@@ -198,7 +214,12 @@ function BodyMetricsForm() {
               </div>
             </div>
           ))}
-          <button className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-sm font-extrabold cursor-pointer mt-1">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-sm font-extrabold cursor-pointer mt-1 disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={16} className="animate-spin inline mr-2" /> : null}
             {t('measurementsSaveBody')}
           </button>
         </div>
@@ -209,7 +230,63 @@ function BodyMetricsForm() {
 
 export default function MeasurementsPage() {
   const { t } = useLanguage()
-  const [weight, setWeight] = useState('75.5')
+  const [weight, setWeight] = useState('')
+  const [savingWeight, setSavingWeight] = useState(false)
+  const [allMeasurements, setAllMeasurements] = useState<Measurement[]>([])
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const weightHistory = groupByDate(allMeasurements)
+  const latestWeight = weightHistory[0]?.kg ?? null
+  const prevWeight = weightHistory[1]?.kg ?? null
+
+  const heightCm = userProfile?.height_cm ?? 175
+
+  const latestBodyMetrics = {
+    bodyFat: allMeasurements.find(r => r.metric_type === 'body_fat_percent')?.value ?? null,
+    water:   allMeasurements.find(r => r.metric_type === 'water_percent')?.value ?? null,
+    muscle:  allMeasurements.find(r => r.metric_type === 'muscle_mass_percent')?.value ?? null,
+  }
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [meas, prof] = await Promise.all([measurements.getAll(), profile.me()])
+      setAllMeasurements(meas)
+      setUserProfile(prof)
+      if (prof.weight_kg) setWeight(String(prof.weight_kg))
+    } catch { /* silent */ } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const handleSaveWeight = async () => {
+    const kg = parseFloat(weight)
+    if (!kg) return
+    setSavingWeight(true)
+    try {
+      await measurements.save({ weight_kg: kg })
+      await fetchData()
+    } finally {
+      setSavingWeight(false)
+    }
+  }
+
+  const handleSaveBodyMetrics = async (metrics: Record<string, number>) => {
+    await measurements.save(metrics)
+    await fetchData()
+  }
+
+  const currentWeight = parseFloat(weight) || latestWeight || 75
+
+  if (loading) {
+    return (
+      <div className="min-h-dvh bg-white flex items-center justify-center">
+        <Loader2 size={32} className="text-lily animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-white">
@@ -234,59 +311,68 @@ export default function MeasurementsPage() {
                 value={weight}
                 onChange={e => setWeight(e.target.value)}
                 step="0.1"
+                placeholder="0.0"
                 style={{ borderRadius: '12px 4px 14px 6px / 4px 12px 6px 14px' }}
                 className="w-full text-center bg-white border-[3px] border-lily/30 text-lily
                            font-extrabold py-3 text-2xl outline-none focus:border-lily/60 transition-colors"
               />
               <span className="text-lg font-extrabold text-lily/50">kg</span>
             </div>
-            <button className="bg-lily text-primary rounded-2xl px-5 py-3 text-sm font-extrabold
-                               active:scale-95 transition-transform cursor-pointer shrink-0">
-              {t('measurementsSave')}
+            <button
+              onClick={handleSaveWeight}
+              disabled={savingWeight || !weight}
+              className="bg-lily text-primary rounded-2xl px-5 py-3 text-sm font-extrabold
+                         active:scale-95 transition-transform cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-default"
+            >
+              {savingWeight ? <Loader2 size={16} className="animate-spin" /> : t('measurementsSave')}
             </button>
           </div>
-          <p className="text-xs font-bold text-lily/40 text-center mt-3">
-            {t('measurementsLastEntry')
-              .replace('{kg}', String(weightHistory[1].kg))
-              .replace('{date}', weightHistory[1].date)}
-            {' · '}
-            {(() => {
-              const diff = parseFloat(weight || '0') - weightHistory[1].kg
-              const isDown = diff < 0
-              return (
-                <span className={isDown ? 'text-[#3ec9a7]' : 'text-red-400'}>
-                  {isDown ? '↓' : '↑'} {Math.abs(diff).toFixed(1)} kg
-                </span>
-              )
-            })()}
-          </p>
+          {latestWeight && prevWeight && (
+            <p className="text-xs font-bold text-lily/40 text-center mt-3">
+              {t('measurementsLastEntry')
+                .replace('{kg}', String(prevWeight))
+                .replace('{date}', weightHistory[1]?.date ?? '')}
+              {' · '}
+              {(() => {
+                const diff = currentWeight - prevWeight
+                const isDown = diff < 0
+                return (
+                  <span className={isDown ? 'text-[#3ec9a7]' : 'text-red-400'}>
+                    {isDown ? '↓' : '↑'} {Math.abs(diff).toFixed(1)} kg
+                  </span>
+                )
+              })()}
+            </p>
+          )}
         </div>
 
-        <WeightTrend />
-        <BmiCard weightKg={parseFloat(weight) || weightHistory[0].kg} />
-        <BodyMetricsForm />
+        {weightHistory.length >= 2 && <WeightTrend history={weightHistory} />}
+        <BmiCard weightKg={currentWeight} heightCm={heightCm} />
+        <BodyMetricsForm initial={latestBodyMetrics} onSave={handleSaveBodyMetrics} />
 
         {/* ── History list ── */}
-        <div>
-          <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest mb-3 px-1">{t('measurementsHistory')}</h2>
-          <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4">
-            {weightHistory.map((entry, i) => {
-              const prev = weightHistory[i + 1]
-              const diff = prev ? entry.kg - prev.kg : null
-              return (
-                <div key={entry.date} className="flex items-center justify-between py-3 border-b border-lily/10 last:border-0">
-                  <span className="text-sm font-bold text-lily/60">{entry.date}</span>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-extrabold w-14 text-right ${diff === null ? '' : diff < 0 ? 'text-[#3ec9a7]' : 'text-red-400'}`}>
-                      {diff !== null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg` : ''}
-                    </span>
-                    <span className="text-sm font-extrabold text-lily w-16 text-right">{entry.kg} kg</span>
+        {weightHistory.length > 0 && (
+          <div>
+            <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest mb-3 px-1">{t('measurementsHistory')}</h2>
+            <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4">
+              {weightHistory.map((entry, i) => {
+                const prev = weightHistory[i + 1]
+                const diff = prev ? entry.kg - prev.kg : null
+                return (
+                  <div key={i} className="flex items-center justify-between py-3 border-b border-lily/10 last:border-0">
+                    <span className="text-sm font-bold text-lily/60">{entry.date}</span>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-extrabold w-14 text-right ${diff === null ? '' : diff < 0 ? 'text-[#3ec9a7]' : 'text-red-400'}`}>
+                        {diff !== null ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)} kg` : ''}
+                      </span>
+                      <span className="text-sm font-extrabold text-lily w-16 text-right">{entry.kg} kg</span>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <BottomNav />

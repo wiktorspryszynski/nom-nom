@@ -8,7 +8,7 @@ const pl = {
   loginLoading: 'Logowanie…',
   loginError: 'Nieprawidłowy login lub hasło',
   loginLogoTooltip: 'Planuję jadłospis, śledzę kalorie i pomagam jeść mądrzej 🥗',
-  loginDemoButton: 'Poproś o dostęp demo',
+  loginDemoButton: 'Wypróbuj konto demo',
   loginDemoSending: 'Wysyłanie…',
   loginDemoNamePlaceholder: 'Imię',
   loginDemoEmailPlaceholder: 'E-mail',
@@ -17,11 +17,14 @@ const pl = {
   loginDemoDone: 'Dzięki, {name}! Odezwiemy się wkrótce. 🎉',
   loginInfoToggle: 'informacja o rejestracji',
   loginInfoText: 'NomNom korzysta z AI, które generuje realne koszty.\nNa razie aplikacja dostępna jest tylko dla zaproszonych osób.\n\nJeśli chcesz spróbować, skontaktuj się ze mną bezpośrednio.',
-  loginOrDemoLabel: 'lub zgłoś chęć demo',
+  loginOrDemoLabel: 'lub spróbuj bez rejestracji',
   loginOrSignUpLabel: 'lub zarejestruj się',
   loginNoAccount: 'Nie masz konta?',
   loginSignUpLink: 'Zarejestruj się',
-  loginGitHub: 'Zarejestruj się przez GitHub',
+  loginGitHubOnlyLink: 'Jak mogę założyć konto?',
+  loginGitHubOnlyMsg: 'Rejestracja na ten moment jest możliwa tylko przez GitHub, dziękujemy za zrozumienie.',
+  loginGitHub: 'Kontynuuj przez GitHub',
+  loginOrEmail: 'lub użyj e-maila',
 
   // ── Sign-up ────────────────────────────────────────────────────────────────
   signupTitle: 'Nowe konto',
@@ -33,6 +36,12 @@ const pl = {
   signupInviteCodePlaceholder: 'Kod zaproszenia',
   signupNamePlaceholder: 'Imię',
   signupEmailPlaceholder: 'E-mail',
+  signupPasswordPlaceholder: 'Hasło',
+  signupPasswordMin8: 'Min. 8 znaków',
+  signupPasswordUpper: 'Wielka litera',
+  signupPasswordNumber: 'Cyfra',
+  signupPasswordSpecial: 'Znak specjalny (!@#$…)',
+  signupPasswordTooWeak: 'Hasło jest za słabe',
   signupStepBodyLabel: 'Twoje ciało',
   signupMale: 'Mężczyzna',
   signupFemale: 'Kobieta',
@@ -57,6 +66,7 @@ const pl = {
   signupSurplusNote: 'nadwyżka {kcal} kcal/dzień',
   signupWarningTooLow: 'Poniżej bezpiecznego minimum — rozważ wolniejsze tempo.',
   signupSelectGoal: 'Wybierz kiedy chcesz osiągnąć cel.',
+  signupEmailTaken: 'Ten adres e-mail jest już zarejestrowany.',
   signupError: 'Coś poszło nie tak. Spróbuj ponownie.',
   signupSuccessTitle: 'Gotowe, {name}!',
   signupSuccessBody: 'Twoje konto zostało utworzone.\nMożesz się teraz zalogować.',
@@ -95,6 +105,7 @@ const pl = {
   dashboardPlannerLink: 'Jadłospis',
   dashboardTodayEntries: 'Dzisiejsze wpisy',
   dashboardAllEntries: 'Wszystkie',
+  dashboardNoEntries: 'Brak wpisów na dziś — dodaj posiłek lub ćwiczenie!',
 
   // ── Planner ────────────────────────────────────────────────────────────────
   plannerTitle: 'Jadłospis',
@@ -107,6 +118,12 @@ const pl = {
   plannerFilterMeals: 'Posiłki',
   plannerFilterExercise: 'Ćwiczenia',
   plannerAddCustom: 'Dodaj własny wpis',
+  plannerNoMeals: 'Brak posiłków na ten dzień.',
+  plannerSavedEmpty: 'Brak zapisanych posiłków.',
+  plannerGenerating: 'Generuję plan…',
+  plannerCancel: 'Anuluj',
+  plannerGenerate: 'Generuj',
+  plannerPreferencesPlaceholder: 'Preferencje: np. bez glutenu, wegetariańskie, kuchnia polska…',
   plannerDays: ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'],
   plannerMeals: ['Śniadanie', 'Obiad', 'Kolacja', 'Przekąska'],
 
@@ -150,6 +167,9 @@ const pl = {
   profilePrivacy: 'Prywatność i dane',
   profileLanguage: 'Język',
   profileLogout: 'Wyloguj się',
+  profileDemoAccount: 'Konto demo',
+  profileDemoCallsLabel: 'Wykorzystane wywołania AI',
+  profileDemoCallsNote: 'Tekst, zdjęcia posiłków, generowanie jadłospisu. Limit dożywotni.',
 
   // ── Calorie calculator ────────────────────────────────────────────────────
   calcTitle: 'Kalkulator kalorii',
@@ -203,13 +223,23 @@ const pl = {
   photoLogSave: 'Zapisz wpis',
   photoLogCancel: 'Anuluj',
 
+  // ── Demo limit modal ──────────────────────────────────────────────────────
+  demoModalLabel: 'Konto demo',
+  demoModalTitle: 'Masz ograniczone konto',
+  demoModalCallsLabel: 'Wywołania AI — pozostało',
+  demoModalCallsNote: 'Tekst, zdjęcia posiłków, generowanie jadłospisu',
+  demoModalBody: 'Konta demo mają dożywotni limit 15 wywołań AI. Funkcje bez AI (pomiary, woda, dziennik ręczny) są nieograniczone.',
+  demoModalDismiss: 'Rozumiem',
+
   // ── 404 ───────────────────────────────────────────────────────────────────
   notFoundTitle: 'Strona nie istnieje',
   notFoundBody: 'Wygląda na to, że NomNom zgubił się szukając przekąski.',
   notFoundBack: 'Wróć do strony głównej',
 } as const
 
-const en: typeof pl = {
+type Translations = { readonly [K in keyof typeof pl]: string | readonly string[] }
+
+const en: Translations = {
   // ── Login ──────────────────────────────────────────────────────────────────
   loginEmail: 'E-mail',
   loginPassword: 'Password',
@@ -217,7 +247,7 @@ const en: typeof pl = {
   loginLoading: 'Logging in…',
   loginError: 'Invalid email or password',
   loginLogoTooltip: 'I plan your meals, track calories, and help you eat smarter 🥗',
-  loginDemoButton: 'Request demo access',
+  loginDemoButton: 'Try demo account',
   loginDemoSending: 'Sending…',
   loginDemoNamePlaceholder: 'Name',
   loginDemoEmailPlaceholder: 'E-mail',
@@ -226,11 +256,14 @@ const en: typeof pl = {
   loginDemoDone: 'Thanks, {name}! We\'ll be in touch soon. 🎉',
   loginInfoToggle: 'about registration',
   loginInfoText: 'NomNom uses AI that incurs real costs.\nFor now the app is available by invitation only.\n\nIf you\'d like to try it, reach out to me directly.',
-  loginOrDemoLabel: 'or request a demo',
+  loginOrDemoLabel: 'or try without signing up',
   loginOrSignUpLabel: 'or sign up',
   loginNoAccount: 'Don\'t have an account?',
   loginSignUpLink: 'Sign up',
-  loginGitHub: 'Sign up with GitHub',
+  loginGitHubOnlyLink: 'How can I make an account?',
+  loginGitHubOnlyMsg: 'Accounts can only be created via GitHub at this time, thank you for your understanding.',
+  loginGitHub: 'Continue with GitHub',
+  loginOrEmail: 'or use email',
 
   // ── Sign-up ────────────────────────────────────────────────────────────────
   signupTitle: 'New account',
@@ -242,6 +275,12 @@ const en: typeof pl = {
   signupInviteCodePlaceholder: 'Invite code',
   signupNamePlaceholder: 'Name',
   signupEmailPlaceholder: 'E-mail',
+  signupPasswordPlaceholder: 'Password',
+  signupPasswordMin8: 'Min. 8 characters',
+  signupPasswordUpper: 'Uppercase letter',
+  signupPasswordNumber: 'Number',
+  signupPasswordSpecial: 'Special character (!@#$…)',
+  signupPasswordTooWeak: 'Password is too weak',
   signupStepBodyLabel: 'Your body',
   signupMale: 'Male',
   signupFemale: 'Female',
@@ -266,6 +305,7 @@ const en: typeof pl = {
   signupSurplusNote: 'surplus {kcal} kcal/day',
   signupWarningTooLow: 'Below safe minimum — consider a slower pace.',
   signupSelectGoal: 'Please select when you want to reach your goal.',
+  signupEmailTaken: 'This email address is already registered.',
   signupError: 'Something went wrong. Please try again.',
   signupSuccessTitle: 'All done, {name}!',
   signupSuccessBody: 'Your account has been created.\nYou can now log in.',
@@ -304,6 +344,7 @@ const en: typeof pl = {
   dashboardPlannerLink: 'Planner',
   dashboardTodayEntries: "Today's entries",
   dashboardAllEntries: 'All',
+  dashboardNoEntries: 'No entries yet — log a meal or exercise!',
 
   // ── Planner ────────────────────────────────────────────────────────────────
   plannerTitle: 'Meal planner',
@@ -316,6 +357,12 @@ const en: typeof pl = {
   plannerFilterMeals: 'Meals',
   plannerFilterExercise: 'Exercise',
   plannerAddCustom: 'Add custom entry',
+  plannerNoMeals: 'No meals planned for this day.',
+  plannerSavedEmpty: 'No saved meals yet.',
+  plannerGenerating: 'Generating plan…',
+  plannerCancel: 'Cancel',
+  plannerGenerate: 'Generate',
+  plannerPreferencesPlaceholder: 'Preferences: e.g. gluten-free, vegetarian, Polish cuisine…',
   plannerDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   plannerMeals: ['Breakfast', 'Lunch', 'Dinner', 'Snack'],
 
@@ -359,6 +406,9 @@ const en: typeof pl = {
   profilePrivacy: 'Privacy & data',
   profileLanguage: 'Language',
   profileLogout: 'Log out',
+  profileDemoAccount: 'Demo account',
+  profileDemoCallsLabel: 'AI calls used',
+  profileDemoCallsNote: 'Text logging, food photos, meal plan generation. Lifetime limit.',
 
   // ── Calorie calculator ────────────────────────────────────────────────────
   calcTitle: 'Calorie calculator',
@@ -412,11 +462,19 @@ const en: typeof pl = {
   photoLogSave: 'Save entry',
   photoLogCancel: 'Cancel',
 
+  // ── Demo limit modal ──────────────────────────────────────────────────────
+  demoModalLabel: 'Demo account',
+  demoModalTitle: 'You have a limited account',
+  demoModalCallsLabel: 'AI calls — remaining',
+  demoModalCallsNote: 'Text logging, food photos, meal plan generation',
+  demoModalBody: 'Demo accounts are limited to 15 AI calls lifetime. Non-AI features (measurements, water, manual log) are unlimited.',
+  demoModalDismiss: 'Got it',
+
   // ── 404 ───────────────────────────────────────────────────────────────────
   notFoundTitle: 'Page not found',
   notFoundBody: 'Looks like NomNom got lost looking for a snack.',
   notFoundBack: 'Go back home',
 }
 
-export const translations: Record<Lang, typeof pl> = { pl, en }
+export const translations: Record<Lang, Translations> = { pl, en }
 export type TranslationKey = keyof typeof pl

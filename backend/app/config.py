@@ -20,12 +20,15 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str | None = None
     usda_api_key: str = ""
+    ai_calls_per_user_per_day: int = 50
+    demo_ai_call_limit: int = 15  # lifetime cap for demo accounts (never resets)
 
     cors_origins: str = "http://localhost:5174"
 
-    # Registration is closed by default. Set to a non-empty string to enable
-    # the /api/register endpoint behind an invite code.
-    register_invite_code: str = ""
+    # GitHub OAuth
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    github_redirect_uri: str = ""  # e.g. https://fit.spryszynski.pl/auth/github/callback
 
     # Email notifications for demo requests (optional — leave empty to skip)
     smtp_host: str = ""
@@ -33,6 +36,11 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     notify_email: str = ""
+
+    @computed_field
+    @property
+    def ai_available(self) -> bool:
+        return bool(self.anthropic_api_key)
 
     class Config:
         env_file = ".env"

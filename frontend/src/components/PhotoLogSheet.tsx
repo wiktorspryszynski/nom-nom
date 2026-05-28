@@ -1,6 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, RotateCcw, Check, Loader2, AlertCircle } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { tracker } from '../lib/api'
+
+/** Resize an image to at most maxPx on its longest side before uploading. */
+async function resizeImage(file: File, maxPx = 1024): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(
+        b => (b ? resolve(b) : reject(new Error('resize failed'))),
+        'image/jpeg',
+        0.88,
+      )
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
 
 interface ParsedFood {
   name: string
@@ -56,15 +80,19 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
     setFood(null)
     setErrorMsg('')
 
-    const formData = new FormData()
-    formData.append('file', file)
-
     const token = localStorage.getItem('nom_token')
-    fetch('/api/tracker/log/photo', {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    })
+
+    // Resize to ≤1024px before upload to reduce vision token cost
+    resizeImage(file)
+      .then(resizedBlob => {
+        const formData = new FormData()
+        formData.append('file', resizedBlob, 'photo.jpg')
+        return fetch('/api/tracker/log/photo', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        })
+      })
       .then(async res => {
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
@@ -87,11 +115,24 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
   const handleSave = async () => {
     if (!food) return
     setSaving(true)
-    // TODO: POST to /api/tracker/log with the confirmed food data
-    await new Promise(r => setTimeout(r, 600))
-    setSaving(false)
-    onSaved?.(food)
-    onClose()
+    try {
+      await tracker.saveLog({
+        description: food.name,
+        kcal: food.kcal,
+        protein: food.protein,
+        fat: food.fat,
+        carbs: food.carbs,
+        source_type: 'photo',
+        ai_confidence: food.confidence,
+      })
+      onSaved?.(food)
+      onClose()
+    } catch {
+      setErrorMsg('Nie udało się zapisać wpisu. Spróbuj ponownie.')
+      setStatus('error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const open = file !== null

@@ -1,13 +1,14 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD, NOMNOM_HAPPY } from '../assets'
+import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
+import { useAuth } from '../context/AuthContext'
+import { GITHUB_PENDING_KEY } from './GitHubCallbackPage'
 
 const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
 
 interface FormData {
-  inviteCode: string
   name: string
   email: string
   password: string
@@ -24,6 +25,7 @@ interface FormData {
 type Status = 'idle' | 'loading' | 'error' | 'success'
 
 const STEPS = 3
+const PRESET_DAYS: Record<string, number> = { '3m': 91, '6m': 182, '12m': 365, 'none': 182 }
 
 const preventNegative = (e: React.KeyboardEvent<HTMLInputElement>) => {
   if (e.key === '-' || e.key === '+' || e.key === 'e') e.preventDefault()
@@ -70,12 +72,13 @@ function UnitInput({
 }
 
 function PlainInput(props: React.InputHTMLAttributes<HTMLInputElement> & { borderRadius: string }) {
-  const { borderRadius, ...rest } = props
+  const { borderRadius, readOnly, ...rest } = props
   return (
     <input
       {...rest}
+      readOnly={readOnly}
       style={{ borderRadius }}
-      className="w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none"
+      className={`w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none ${readOnly ? 'opacity-50 cursor-default select-none' : ''}`}
     />
   )
 }
@@ -100,26 +103,102 @@ function StepDots({ current }: { current: number }) {
   )
 }
 
+function PasswordStrength({ password }: { password: string }) {
+  const { t } = useLanguage()
+  const rules = [
+    { key: 'min8',    label: t('signupPasswordMin8'),    ok: password.length >= 8 },
+    { key: 'upper',   label: t('signupPasswordUpper'),   ok: /[A-Z]/.test(password) },
+    { key: 'number',  label: t('signupPasswordNumber'),  ok: /[0-9]/.test(password) },
+    { key: 'special', label: t('signupPasswordSpecial'), ok: /[^A-Za-z0-9]/.test(password) },
+  ]
+  if (!password) return null
+  const score = rules.filter(r => r.ok).length
+  const barColor = score <= 1 ? '#f97316' : score === 2 ? '#f7a84a' : score === 3 ? '#facc15' : '#3ec9a7'
+  return (
+    <div className="flex flex-col gap-2 px-1">
+      <div className="flex gap-1">
+        {rules.map((_, i) => (
+          <div
+            key={i}
+            className="flex-1 h-1 rounded-full transition-colors duration-300"
+            style={{ backgroundColor: i < score ? barColor : 'color-mix(in srgb, var(--color-lily) 15%, transparent)' }}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+        {rules.map(r => (
+          <span key={r.key} className={`text-[11px] font-bold flex items-center gap-1 transition-colors ${r.ok ? 'text-[#3ec9a7]' : 'text-lily/35'}`}>
+            <span className="text-[10px]">{r.ok ? '✓' : '○'}</span>{r.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function SignUpPage() {
   const navigate = useNavigate()
-  const { t, lang } = useLanguage()
+  const { login, loginWithToken } = useAuth()
+  const { t, lang, setLang } = useLanguage()
   const [step, setStep] = useState(1)
-  const [data, setData] = useState<FormData>({
-    inviteCode: '', name: '', email: '', password: '', birthDate: '',
-    sex: '', height: '', weight: '', targetWeight: '',
-    goalType: '', currentIntake: '', targetDate: '',
+  const [data, setData] = useState<FormData>(() => {
+    const base: FormData = { name: '', email: '', password: '', birthDate: '', sex: '', height: '', weight: '', targetWeight: '', goalType: '', currentIntake: '', targetDate: '' }
+    if (new URLSearchParams(window.location.search).get('via') !== 'github') return base
+    try {
+      const raw = sessionStorage.getItem(GITHUB_PENDING_KEY)
+      if (!raw) return base
+      const pending = JSON.parse(raw) as { email: string; name: string; github_id: string }
+      return { ...base, email: pending.email, name: pending.name }
+    } catch { return base }
   })
+
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
   const [calorieTarget, setCalorieTarget] = useState<number | null>(null)
 
+  // GitHub OAuth path
+  const [githubId] = useState<string | null>(() => {
+    if (new URLSearchParams(window.location.search).get('via') !== 'github') return null
+    try {
+      const raw = sessionStorage.getItem(GITHUB_PENDING_KEY)
+      if (!raw) return null
+      const pending = JSON.parse(raw) as { email: string; name: string; github_id: string }
+      sessionStorage.removeItem(GITHUB_PENDING_KEY)
+      return pending.github_id
+    } catch { return null }
+  })
+  const viaGitHub = Boolean(githubId)
+
   const set = (field: keyof FormData) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setData(d => ({ ...d, [field]: e.target.value }))
 
-  const nextStep = (e: React.FormEvent) => {
+  const isPasswordStrong = (pw: string) =>
+    pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
+
+  const nextStep = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (step === 1) {
+      if (!viaGitHub && !isPasswordStrong(data.password)) {
+        setError(t('signupPasswordTooWeak'))
+        return
+      }
+      // Check email availability before proceeding to step 2
+      setStatus('loading')
+      try {
+        const res = await fetch(`/api/register/check-email?email=${encodeURIComponent(data.email)}`)
+        const { available } = await res.json()
+        if (!available) {
+          setError(t('signupEmailTaken'))
+          setStatus('idle')
+          return
+        }
+      } catch {
+        // Network error — allow proceeding, final submit will catch it
+      }
+      setStatus('idle')
+    }
     // Step 2: require an explicit goal type selection before proceeding.
     if (step === 2 && !data.goalType) {
       setError(t('signupSelectGoal'))
@@ -140,30 +219,44 @@ export default function SignUpPage() {
     setStatus('loading')
     setError('')
     const tdee = Number(data.currentIntake)
-    const target = calorieTarget ?? tdee
+    const target = calorieTarget ?? recommendation?.kcal ?? tdee
     try {
+      const body: Record<string, unknown> = {
+        name: data.name,
+        email: data.email,
+        birth_date: data.birthDate || null,
+        sex: data.sex,
+        height_cm: Number(data.height),
+        weight_kg: Number(data.weight),
+        target_weight_kg: Number(data.targetWeight),
+        tdee_kcal: tdee,
+        calorie_target: target,
+        goal_type: data.goalType || 'maintain',
+        language: lang,
+      }
+      if (viaGitHub) {
+        body.github_id = githubId
+      } else {
+        body.password = data.password
+      }
+
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invite_code: data.inviteCode,
-          name: data.name,
-          email: data.email,
-          password: data.password,
-          birth_date: data.birthDate || null,
-          sex: data.sex,
-          height_cm: Number(data.height),
-          weight_kg: Number(data.weight),
-          target_weight_kg: Number(data.targetWeight),
-          tdee_kcal: tdee,
-          calorie_target: target,
-          goal_type: data.goalType || 'maintain',
-          // target_date_preset is a UI-only field; calorie_target is the derived value we persist.
-          language: lang,
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
-      setStatus('success')
+      const result = await res.json()
+
+      if (viaGitHub && result.access_token) {
+        // GitHub users: backend returns a token, use it directly
+        await loginWithToken(result.access_token)
+        navigate('/')
+      } else {
+        // Email users: log in with password
+        await login(data.email, data.password)
+        navigate('/')
+      }
     } catch {
       setStatus('error')
       setError(t('signupError'))
@@ -183,51 +276,41 @@ export default function SignUpPage() {
     { label: t('signupGoalBuild'),    value: 'build' as const },
   ]
 
-  const PRESET_DAYS: Record<string, number> = { '3m': 91, '6m': 182, '12m': 365, 'none': 182 }
   const MIN_KCAL = data.sex === 'F' ? 1200 : 1500
 
-  const recommendation = useMemo((): { kcal: number; delta: number } | null => {
-    const tdee = Number(data.currentIntake)
-    const w = Number(data.weight)
-    const tw = Number(data.targetWeight)
+  const tdee = Number(data.currentIntake)
+  const w = Number(data.weight)
+  const tw = Number(data.targetWeight)
+  const recommendation: { kcal: number; delta: number } | null = (() => {
     if (!tdee || !w || !tw || !data.targetDate || data.goalType === 'maintain' || !data.goalType) return null
     const days = PRESET_DAYS[data.targetDate] ?? 182
     const totalDelta = (w - tw) * 7700
     const dailyDelta = Math.round(totalDelta / days)
     const recommended = tdee - dailyDelta
     return { kcal: recommended, delta: dailyDelta }
-  }, [data.currentIntake, data.weight, data.targetWeight, data.targetDate, data.goalType])
-
-  if (status === 'success') {
-    const successLines = t('signupSuccessBody').split('\n')
-    return (
-      <div className="min-h-dvh bg-primary flex items-center justify-center px-6">
-        <div className="w-full max-w-sm flex flex-col items-center gap-6 text-center">
-          <img src={NOMNOM_HAPPY} alt="NomNom" className="w-36 h-36" />
-          <h2 className="text-4xl font-extrabold text-lily">
-            {t('signupSuccessTitle').replace('{name}', data.name)}
-          </h2>
-          <p className="text-lily/70 font-semibold leading-relaxed">
-            {successLines.map((line, i) => (
-              <React.Fragment key={i}>
-                {line}
-                {i < successLines.length - 1 && <br />}
-              </React.Fragment>
-            ))}
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
-          >
-            {t('signupSuccessLogin')}
-          </button>
-        </div>
-      </div>
-    )
-  }
+  })()
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6 py-10">
+
+      {/* Language toggle — top right */}
+      <div className="absolute top-4 right-4">
+        <div className="flex gap-1 bg-lily/10 rounded-xl p-0.5">
+          {(['pl', 'en'] as const).map(l => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
+                lang === l ? 'bg-lily text-primary' : 'text-lily/50 hover:text-lily/80'
+              }`}
+            >
+              {l === 'pl' ? 'PL' : 'EN'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="w-full max-w-sm flex flex-col items-center gap-5">
 
         {/* Header — always visible */}
@@ -244,21 +327,6 @@ export default function SignUpPage() {
         {/* ── Step 1: Basic info ── */}
         {step === 1 && (
           <form onSubmit={nextStep} className="w-full flex flex-col gap-3">
-            {/* Invite code — required to gate open registration */}
-            <InputWrap
-              r1="2px 20px 4px 18px / 20px 2px 18px 4px"
-              r2="4px 16px 8px 20px / 16px 4px 20px 8px"
-              r3="8px 12px 4px 16px / 12px 8px 16px 4px"
-            >
-              <PlainInput
-                type="text"
-                placeholder={t('signupInviteCodePlaceholder')}
-                value={data.inviteCode}
-                onChange={set('inviteCode')}
-                required
-                borderRadius="2px 20px 4px 18px / 20px 2px 18px 4px"
-              />
-            </InputWrap>
 
             <InputWrap
               r1="4px 18px 6px 16px / 18px 4px 16px 6px"
@@ -271,6 +339,7 @@ export default function SignUpPage() {
                 value={data.name}
                 onChange={set('name')}
                 required
+                readOnly={viaGitHub}
                 borderRadius="4px 18px 6px 16px / 18px 4px 16px 6px"
               />
             </InputWrap>
@@ -286,25 +355,31 @@ export default function SignUpPage() {
                 value={data.email}
                 onChange={set('email')}
                 required
+                readOnly={viaGitHub}
                 borderRadius="16px 5px 18px 4px / 5px 16px 4px 18px"
               />
             </InputWrap>
 
-            <InputWrap
-              r1="12px 8px 14px 6px / 8px 12px 6px 14px"
-              r2="10px 14px 8px 16px / 14px 10px 16px 8px"
-              r3="16px 6px 12px 10px / 6px 16px 10px 12px"
-            >
-              <PlainInput
-                type="password"
-                placeholder="Hasło / Password"
-                value={data.password}
-                onChange={set('password')}
-                required
-                minLength={8}
-                borderRadius="12px 8px 14px 6px / 8px 12px 6px 14px"
-              />
-            </InputWrap>
+            {/* Password field — hidden for GitHub signups */}
+            {!viaGitHub && (
+              <>
+                <InputWrap
+                  r1="12px 8px 14px 6px / 8px 12px 6px 14px"
+                  r2="10px 14px 8px 16px / 14px 10px 16px 8px"
+                  r3="16px 6px 12px 10px / 6px 16px 10px 12px"
+                >
+                  <PlainInput
+                    type="password"
+                    placeholder={t('signupPasswordPlaceholder')}
+                    value={data.password}
+                    onChange={set('password')}
+                    required
+                    borderRadius="12px 8px 14px 6px / 8px 12px 6px 14px"
+                  />
+                </InputWrap>
+                <PasswordStrength password={data.password} />
+              </>
+            )}
 
             <InputWrap
               r1="8px 14px 4px 18px / 14px 8px 18px 4px"
@@ -323,9 +398,10 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer"
+              disabled={status === 'loading'}
+              className="btn-fill mt-2 w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
             >
-              {t('signupNext')}
+              {status === 'loading' ? '…' : t('signupNext')}
             </button>
           </form>
         )}
