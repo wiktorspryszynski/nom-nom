@@ -14,8 +14,13 @@ function authHeaders(): Record<string, string> {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, public detail: string) {
+  status: number
+  detail: string
+
+  constructor(status: number, detail: string) {
     super(detail)
+    this.status = status
+    this.detail = detail
   }
 }
 
@@ -172,7 +177,7 @@ export const profile = {
 
 export const mealPlanner = {
   list: () => api.get<MealPlan[]>('/api/meal-planner/plans'),
-  generate: (params: { days?: number; meals_per_day?: number; preferences?: string }) =>
+  generate: (params: { days?: number; meals_per_day?: number; preferences?: string; start_date?: string }) =>
     api.post<MealPlan>('/api/meal-planner/generate', params),
 }
 

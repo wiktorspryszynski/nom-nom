@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Sparkles, Plus, ChevronLeft, ChevronRight, Utensils, X, Loader2 } from 'lucide-react'
+import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import { useLanguage } from '../context/LanguageContext'
 import { mealPlanner, type MealPlan, type MealPlanItem, ApiError } from '../lib/api'
@@ -132,7 +132,26 @@ function weekLabel(startDate: Date) {
   const end = new Date(startDate)
   end.setDate(startDate.getDate() + 6)
   const fmt = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'long' })
-  return `${fmt.format(startDate)} – ${fmt.format(end)}`
+  return `${fmt.format(startDate)} - ${fmt.format(end)}`
+}
+
+function parseDateOnly(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function formatDateOnly(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getWeekStart(value: Date) {
+  const start = new Date(value)
+  const day = start.getDay()
+  const offset = day === 0 ? -6 : 1 - day
+  start.setDate(start.getDate() + offset)
+  return start
 }
 
 export default function PlannerPage() {
@@ -171,7 +190,17 @@ export default function PlannerPage() {
     setGenerating(true)
     setError('')
     try {
-      const plan = await mealPlanner.generate({ days: 7, meals_per_day: 3, preferences })
+      const baseDate = activePlan ? parseDateOnly(activePlan.start_date) : getWeekStart(new Date())
+      const planStartDate = new Date(baseDate)
+      planStartDate.setDate(baseDate.getDate() + selectedDay)
+      const daysRemaining = Math.max(1, 7 - selectedDay)
+
+      const plan = await mealPlanner.generate({
+        days: daysRemaining,
+        meals_per_day: 3,
+        preferences,
+        start_date: formatDateOnly(planStartDate),
+      })
       setActivePlan(plan)
       setPlans(p => [plan, ...p])
     } catch (err) {
@@ -179,7 +208,7 @@ export default function PlannerPage() {
         setAiAvailable(false)
         setError('AI service unavailable')
       } else if (err instanceof ApiError && (err.detail === 'AI_QUOTA_EXCEEDED' || err.status === 429)) {
-        setError('Daily AI limit reached — try again tomorrow')
+        setError('Daily AI limit reached - try again tomorrow')
       } else {
         setError('Generation failed. Try again.')
       }
@@ -189,16 +218,14 @@ export default function PlannerPage() {
   }
 
   const currentItems = activePlan?.items ?? []
-  const startDate = activePlan ? new Date(activePlan.start_date) : new Date()
+  const startDate = activePlan ? parseDateOnly(activePlan.start_date) : new Date()
 
   return (
     <div className="min-h-dvh bg-white">
-      {/* ── Header ── */}
       <div className="bg-primary px-5 pt-14 pb-6 relative overflow-hidden">
         <img src={NOMNOM_EATING_RAMEN} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
         <h1 className="text-2xl font-extrabold text-lily mb-4">{t('plannerTitle')}</h1>
 
-        {/* Week navigation */}
         <div className="flex items-center justify-between mb-3">
           <button
             disabled={plans.length <= 1}
@@ -227,7 +254,6 @@ export default function PlannerPage() {
       </div>
 
       <div className="px-4 pb-28 space-y-4 mt-4">
-        {/* ── AI generate CTA ── */}
         <button
           onClick={() => aiAvailable ? setShowModal(true) : setError('AI unavailable')}
           disabled={generating}
@@ -244,7 +270,6 @@ export default function PlannerPage() {
 
         {error && <p className="text-xs font-bold text-orange-500 text-center">{error}</p>}
 
-        {/* ── Tab switcher ── */}
         <div className="flex bg-lily/8 rounded-2xl p-1">
           {(['plan', 'saved'] as const).map(tabKey => (
             <button
