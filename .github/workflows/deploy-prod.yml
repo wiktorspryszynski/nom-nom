@@ -27,3 +27,4 @@ jobs:
             cd "$DEPLOY_PATH"
             git pull origin main
             docker-compose up --build -d
+            docker exec nom-nom-backend-1 alembic upgrade head
