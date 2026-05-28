@@ -182,8 +182,10 @@ export default function PlannerPage() {
   }, [])
 
   useEffect(() => {
-    fetchPlans()
-    fetch('/api/health').then(r => r.json()).then(d => setAiAvailable(d.ai_available ?? true)).catch(() => {})
+    ;(async () => {
+      await fetchPlans()
+      fetch('/api/health').then(r => r.json()).then(d => setAiAvailable(d.ai_available ?? true)).catch(() => {})
+    })()
   }, [fetchPlans])
 
   const handleGenerate = async (preferences: string) => {

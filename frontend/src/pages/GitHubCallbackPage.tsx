@@ -8,7 +8,16 @@ export default function GitHubCallbackPage() {
   const [searchParams] = useSearchParams()
   const { loginWithToken } = useAuth()
   const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) return null
+    const ghError = params.get('error')
+    if (ghError === 'access_denied') return 'Access denied — you cancelled the GitHub login.'
+    if (ghError === 'redirect_uri_mismatch') return 'OAuth redirect URI mismatch — check GitHub app settings.'
+    if (ghError) return `GitHub error: ${ghError}`
+    return 'GitHub login failed'
+  })
   const called = useRef(false)
 
   useEffect(() => {
@@ -17,19 +26,8 @@ export default function GitHubCallbackPage() {
 
     const code = searchParams.get('code')
     const state = searchParams.get('state')
-    const ghError = searchParams.get('error')
 
-    if (!code) {
-      const msg = ghError === 'access_denied'
-        ? 'Access denied — you cancelled the GitHub login.'
-        : ghError === 'redirect_uri_mismatch'
-        ? 'OAuth redirect URI mismatch — check GitHub app settings.'
-        : ghError
-        ? `GitHub error: ${ghError}`
-        : 'GitHub login failed'
-      setError(msg)
-      return
-    }
+    if (!code) return
 
     ;(async () => {
       try {

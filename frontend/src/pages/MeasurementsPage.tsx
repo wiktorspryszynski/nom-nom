@@ -259,7 +259,7 @@ export default function MeasurementsPage() {
     }
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { ;(async () => { await fetchData() })() }, [fetchData])
 
   const handleSaveWeight = async () => {
     const kg = parseFloat(weight)
