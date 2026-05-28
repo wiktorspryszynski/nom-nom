@@ -9,6 +9,8 @@ You describe what you ate (or photograph it), the app extracts the nutrition dat
 
 **Live:** https://fit.spryszynski.pl
 
+> **NOTE:** This project is a work in progress.
+
 <div align="center">
   <img src="assets/screenshot_1.png" alt="NomNom dashboard screenshot" width="320" />
 </div>
