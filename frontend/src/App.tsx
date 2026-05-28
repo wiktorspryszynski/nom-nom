@@ -30,7 +30,6 @@ function AppShell() {
       <Routes>
         <Route path="/login"    element={token ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/register" element={<RegisterRoute />} />
-        {/* GitHub OAuth callback — always accessible regardless of auth state */}
         <Route path="/auth/github/callback" element={<GitHubCallbackPage />} />
         {token ? (
           <>
