@@ -17,7 +17,7 @@ class BodyMeasurement(Base):
     __tablename__ = "body_measurements"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     measured_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     metric_type = Column(SAEnum(MetricType, **_enum_kw), nullable=False, index=True)
     value = Column(Float, nullable=False)

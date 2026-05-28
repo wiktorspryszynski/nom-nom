@@ -219,7 +219,7 @@ export default function SignUpPage() {
     setStatus('loading')
     setError('')
     const tdee = Number(data.currentIntake)
-    const target = calorieTarget ?? tdee
+    const target = calorieTarget ?? recommendation?.kcal ?? tdee
     try {
       const body: Record<string, unknown> = {
         name: data.name,

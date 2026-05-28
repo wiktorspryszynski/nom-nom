@@ -12,7 +12,7 @@ class FoodLog(Base):
     __tablename__ = "food_logs"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     logged_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     description = Column(String, nullable=False)
     kcal = Column(Integer, nullable=False)
