@@ -18,16 +18,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('users', sa.Column('tdee_kcal', sa.Integer(), nullable=True))
-    op.add_column('users', sa.Column('calorie_target', sa.Integer(), nullable=True))
-    op.add_column('users', sa.Column('weight_target', sa.Float(), nullable=True))
-    op.add_column('users', sa.Column('goal_type', sa.Enum('lose', 'maintain', 'build', name='goaltype', native_enum=False, create_constraint=False), nullable=True))
-    op.add_column('users', sa.Column('protein_target', sa.Integer(), nullable=True))
-    op.add_column('users', sa.Column('sex', sa.Enum('M', 'F', name='sex', native_enum=False, create_constraint=False), nullable=True))
-    op.add_column('users', sa.Column('height_cm', sa.Float(), nullable=True))
-    op.add_column('users', sa.Column('weight_kg', sa.Float(), nullable=True))
-    op.add_column('users', sa.Column('birth_date', sa.String(), nullable=True))
-    op.add_column('users', sa.Column('language', sa.Enum('pl', 'en', name='language', native_enum=False, create_constraint=False), nullable=True))
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS tdee_kcal INTEGER")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS calorie_target INTEGER")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_target FLOAT")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS goal_type VARCHAR")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS protein_target INTEGER")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS sex VARCHAR")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm FLOAT")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS weight_kg FLOAT")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date VARCHAR")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR")
 
 
 def downgrade() -> None:
