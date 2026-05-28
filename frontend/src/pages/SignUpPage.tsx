@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
@@ -278,17 +278,17 @@ export default function SignUpPage() {
 
   const MIN_KCAL = data.sex === 'F' ? 1200 : 1500
 
-  const recommendation = useMemo((): { kcal: number; delta: number } | null => {
-    const tdee = Number(data.currentIntake)
-    const w = Number(data.weight)
-    const tw = Number(data.targetWeight)
+  const tdee = Number(data.currentIntake)
+  const w = Number(data.weight)
+  const tw = Number(data.targetWeight)
+  const recommendation: { kcal: number; delta: number } | null = (() => {
     if (!tdee || !w || !tw || !data.targetDate || data.goalType === 'maintain' || !data.goalType) return null
     const days = PRESET_DAYS[data.targetDate] ?? 182
     const totalDelta = (w - tw) * 7700
     const dailyDelta = Math.round(totalDelta / days)
     const recommended = tdee - dailyDelta
     return { kcal: recommended, delta: dailyDelta }
-  }, [data.currentIntake, data.weight, data.targetWeight, data.targetDate, data.goalType])
+  })()
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6 py-10">
