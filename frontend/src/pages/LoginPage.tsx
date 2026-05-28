@@ -9,7 +9,7 @@ import { SMALL_ICON_NO_BG, NOMNOM_SMILING, ICON_BG } from '../assets'
 function GitHubButton() {
   const { t } = useLanguage()
   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined
-  const redirectUri = `${window.location.origin}/auth/github/callback`
+  const redirectUri = (import.meta.env.VITE_GITHUB_REDIRECT_URI as string | undefined) ?? `${window.location.origin}/auth/github/callback`
 
   if (!clientId) return null
 
