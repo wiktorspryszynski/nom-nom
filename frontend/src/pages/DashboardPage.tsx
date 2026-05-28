@@ -92,6 +92,7 @@ function WaterWidget({
   const [glasses, setGlasses] = useState(initial)
 
   // Sync with external data (initial load)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setGlasses(initial), [initial])
 
   const change = (n: number) => {
@@ -301,6 +302,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDaily()
     // Check AI availability
     fetch('/api/health').then(r => r.json()).then(d => setAiAvailable(d.ai_available ?? true)).catch(() => {})

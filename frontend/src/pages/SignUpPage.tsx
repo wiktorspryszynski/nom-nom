@@ -25,6 +25,7 @@ interface FormData {
 type Status = 'idle' | 'loading' | 'error' | 'success'
 
 const STEPS = 3
+const PRESET_DAYS: Record<string, number> = { '3m': 91, '6m': 182, '12m': 365, 'none': 182 }
 
 const preventNegative = (e: React.KeyboardEvent<HTMLInputElement>) => {
   if (e.key === '-' || e.key === '+' || e.key === 'e') e.preventDefault()
@@ -275,7 +276,6 @@ export default function SignUpPage() {
     { label: t('signupGoalBuild'),    value: 'build' as const },
   ]
 
-  const PRESET_DAYS: Record<string, number> = { '3m': 91, '6m': 182, '12m': 365, 'none': 182 }
   const MIN_KCAL = data.sex === 'F' ? 1200 : 1500
 
   const recommendation = useMemo((): { kcal: number; delta: number } | null => {

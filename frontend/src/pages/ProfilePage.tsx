@@ -100,6 +100,7 @@ export default function ProfilePage() {
     }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchProfile() }, [fetchProfile])
 
   const saveProfile = async () => {
