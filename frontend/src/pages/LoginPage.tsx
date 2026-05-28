@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 import { QrCode } from 'lucide-react'
 import { SMALL_ICON_NO_BG, NOMNOM_SMILING, ICON_BG } from '../assets'
@@ -337,9 +337,6 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-
-  console.log('LoginPage rendered')
-  console.log(import.meta.env.VITE_GITHUB_CLIENT_ID ? 'GitHub OAuth enabled' : 'GitHub OAuth disabled')
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6">

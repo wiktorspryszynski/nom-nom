@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Target, LogOut, ChevronRight, Pencil, Check, Loader2, Zap } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
 import { profile, type UserProfile } from '../lib/api'

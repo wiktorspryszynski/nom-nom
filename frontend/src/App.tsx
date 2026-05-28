@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/useAuth'
 import { LanguageProvider } from './context/LanguageContext'
 import { GITHUB_ONLY } from './config'
 import LoginPage from './pages/LoginPage'

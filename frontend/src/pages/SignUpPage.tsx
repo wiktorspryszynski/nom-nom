@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { GITHUB_PENDING_KEY } from './GitHubCallbackPage'
 
 const STEP_ICONS = [NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD]

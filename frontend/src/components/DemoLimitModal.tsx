@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 
 const DEMO_LIMIT = 15
