@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Target, LogOut, ChevronRight, Pencil, Check, Loader2 } from 'lucide-react'
+import { Target, LogOut, ChevronRight, Pencil, Check, Loader2, Zap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
@@ -65,6 +65,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+const DEMO_LIMIT = 15
 
 const PROTEIN_MULTIPLIERS: Record<string, number> = { lose: 2.0, maintain: 1.6, build: 2.2 }
 
@@ -161,6 +163,34 @@ export default function ProfilePage() {
           <InfoRow label={t('profileName')}  value={displayName} />
           <InfoRow label={t('profileEmail')} value={displayEmail} />
         </div>
+
+        {/* ── Demo usage ── */}
+        {user?.account_type === 'demo' && (() => {
+          const used = user.demo_ai_calls_used
+          const pct = Math.min(100, (used / DEMO_LIMIT) * 100)
+          const isExhausted = used >= DEMO_LIMIT
+          return (
+            <div className="bg-ivory rounded-2xl shadow-md border-[3px] border-lily/20 px-4 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap size={14} className="text-lily/50" />
+                <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('profileDemoAccount')}</h2>
+              </div>
+              <div className="flex justify-between items-baseline mb-2">
+                <span className="text-sm font-bold text-lily/70">{t('profileDemoCallsLabel')}</span>
+                <span className="text-lg font-extrabold text-lily">
+                  {used} <span className="text-sm font-semibold text-lily/50">/ {DEMO_LIMIT}</span>
+                </span>
+              </div>
+              <div className="w-full h-2 bg-lily/15 rounded-full overflow-hidden mb-2">
+                <div
+                  className={`h-full rounded-full transition-all ${isExhausted ? 'bg-red-400' : 'bg-lily'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-xs text-lily/50 font-medium">{t('profileDemoCallsNote')}</p>
+            </div>
+          )
+        })()}
 
         {/* ── Goals ── */}
         <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4">

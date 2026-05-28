@@ -101,6 +101,8 @@ export interface UserProfile {
   id: number
   name: string
   email: string
+  account_type: string
+  demo_ai_calls_used: number
   tdee_kcal: number | null
   calorie_target: number | null
   weight_target: number | null

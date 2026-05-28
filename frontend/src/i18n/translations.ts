@@ -165,6 +165,9 @@ const pl = {
   profilePrivacy: 'Prywatność i dane',
   profileLanguage: 'Język',
   profileLogout: 'Wyloguj się',
+  profileDemoAccount: 'Konto demo',
+  profileDemoCallsLabel: 'Wykorzystane wywołania AI',
+  profileDemoCallsNote: 'Tekst, zdjęcia posiłków, generowanie jadłospisu. Limit dożywotni.',
 
   // ── Calorie calculator ────────────────────────────────────────────────────
   calcTitle: 'Kalkulator kalorii',
@@ -397,6 +400,9 @@ const en: typeof pl = {
   profilePrivacy: 'Privacy & data',
   profileLanguage: 'Language',
   profileLogout: 'Log out',
+  profileDemoAccount: 'Demo account',
+  profileDemoCallsLabel: 'AI calls used',
+  profileDemoCallsNote: 'Text logging, food photos, meal plan generation. Lifetime limit.',
 
   // ── Calorie calculator ────────────────────────────────────────────────────
   calcTitle: 'Calorie calculator',
