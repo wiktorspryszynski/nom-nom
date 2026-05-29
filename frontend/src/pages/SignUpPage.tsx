@@ -95,6 +95,7 @@ function DateInput({
   const [d, setD] = useState(value ? value.slice(8, 10) : '')
   const [m, setM] = useState(value ? value.slice(5, 7) : '')
   const [y, setY] = useState(value ? value.slice(0, 4) : '')
+  const dayRef = useRef<HTMLInputElement>(null)
   const monthRef = useRef<HTMLInputElement>(null)
   const yearRef = useRef<HTMLInputElement>(null)
 
@@ -105,42 +106,78 @@ function DateInput({
     const dNum = parseInt(day, 10)
     const mNum = parseInt(month, 10)
     const yNum = parseInt(year, 10)
-    const maxYear = new Date().getFullYear()
-    if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12 && yNum >= maxYear - 120 && yNum <= maxYear) {
+
+    // Date constructor overflow detection: Feb 30 rolls forward → output ≠ input → invalid
+    const date = new Date(yNum, mNum - 1, dNum)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const isValidCalendar = date.getFullYear() === yNum && date.getMonth() === mNum - 1 && date.getDate() === dNum
+    const isInPast = date < today
+    const isWithin120Years = yNum >= today.getFullYear() - 120
+
+    if (isValidCalendar && isInPast && isWithin120Years) {
       onChange(`${year}-${mm}-${dd}`)
     } else {
       onChange('')
     }
   }
 
+  // Returns the number of days in a given month/year (uses Date overflow trick)
+  const daysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate()
+
+  const clampDay = (day: string, month: string, year: string): string => {
+    if (day.length !== 2) return day
+    const mNum = parseInt(month, 10)
+    const yNum = year.length === 4 ? parseInt(year, 10) : 2001 // non-leap default so Feb 29 requires confirmed leap year
+    const maxDay = mNum >= 1 && mNum <= 12 ? daysInMonth(mNum, yNum) : 31
+    return String(Math.min(parseInt(day, 10), maxDay))
+  }
+
   const handleDay = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    v = clampDay(v, m, y)
     setD(v)
     if (v.length === 2) monthRef.current?.focus()
     emit(v, m, y)
   }
 
   const handleMonth = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    if (v.length === 2) v = String(Math.min(parseInt(v, 10), 12))
+    // Re-clamp day against the new month (e.g. switching to Feb with day=31 → 28)
+    const newD = clampDay(d, v, y)
+    if (newD !== d) setD(newD)
     setM(v)
     if (v.length === 2) yearRef.current?.focus()
-    emit(d, v, y)
+    emit(newD, v, y)
   }
 
   const handleYear = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+    let v = e.target.value.replace(/\D/g, '').slice(0, 4)
+    if (v.length === 4) v = String(Math.min(parseInt(v, 10), new Date().getFullYear()))
+    // Re-clamp day when year completes — catches Feb 29 on non-leap years
+    const newD = clampDay(d, m, v)
+    if (newD !== d) setD(newD)
     setY(v)
-    emit(d, m, v)
+    emit(newD, m, v)
+  }
+
+  const handleContainerClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT') return
+    if (!d) dayRef.current?.focus()
+    else if (!m) monthRef.current?.focus()
+    else yearRef.current?.focus()
   }
 
   const inputClass = 'bg-transparent text-lily placeholder:text-lily/30 text-base font-semibold outline-none text-center'
 
   return (
     <div
-      className="w-full bg-ivory flex items-center px-4 py-3 gap-1"
+      className="w-full bg-ivory flex items-center px-4 py-3 gap-1 cursor-text"
       style={{ borderRadius }}
+      onClick={handleContainerClick}
     >
       <input
+        ref={dayRef}
         type="text"
         inputMode="numeric"
         value={d}
@@ -169,7 +206,7 @@ function DateInput({
         onChange={handleYear}
         placeholder="YYYY"
         maxLength={4}
-        className={`w-16 ${inputClass}`}
+        className={`w-14 ${inputClass}`}
       />
     </div>
   )
