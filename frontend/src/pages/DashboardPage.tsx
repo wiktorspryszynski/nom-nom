@@ -345,9 +345,10 @@ export default function DashboardPage() {
     } catch { /* silent */ }
   }
 
-  const handleDeleteEntry = async (id: number) => {
+  const handleDeleteEntry = async (id: number, type: 'food' | 'exercise') => {
     try {
-      await tracker.deleteLog(id)
+      if (type === 'exercise') await tracker.deleteExercise(id)
+      else await tracker.deleteLog(id)
       setDaily(d => ({ ...d, entries: d.entries.filter(e => e.id !== id) }))
     } catch { /* silent */ }
   }
@@ -481,7 +482,7 @@ export default function DashboardPage() {
                   <p className="text-center text-sm font-semibold text-lily/30 py-6">{t('dashboardNoEntries')}</p>
                 ) : (
                   daily.entries.map(e => (
-                    <EntryRow key={`${e.type}-${e.id}`} entry={e} onDelete={handleDeleteEntry} onEdit={handleEditEntry} />
+                    <EntryRow key={`${e.type}-${e.id}`} entry={e} onDelete={id => handleDeleteEntry(id, e.type)} onEdit={handleEditEntry} />
                   ))
                 )}
               </div>
@@ -510,6 +511,7 @@ export default function DashboardPage() {
       {showEntryForm && (
         <EntryFormSheet
           entry={editEntry}
+          context="dashboard"
           onClose={() => setShowEntryForm(false)}
           onSaved={() => { setShowEntryForm(false); fetchDaily() }}
         />

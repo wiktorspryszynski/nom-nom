@@ -1,33 +1,112 @@
-import { useState } from 'react'
-import { Dumbbell, Utensils } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Dumbbell, Loader2, Sparkles, Utensils } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
-import { tracker, type DailyEntry } from '../lib/api'
+import { library, tracker, type DailyEntry, type SavedItem } from '../lib/api'
+
+type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
 
 export default function EntryFormSheet({
   entry,
+  defaultMealType,
+  context = 'dashboard',
   onClose,
   onSaved,
 }: {
   entry?: DailyEntry
+  defaultMealType?: MealType
+  context?: 'dashboard' | 'planner' | 'library'
   onClose: () => void
   onSaved: () => void
 }) {
   const { t } = useLanguage()
   const isEdit = Boolean(entry)
+  const isLibraryContext = context === 'library'
 
   const [type, setType] = useState<'food' | 'exercise'>(entry?.type ?? 'food')
+  const [mealType, setMealType] = useState<MealType>(defaultMealType ?? 'other')
   const [name, setName] = useState(entry?.name ?? '')
   const [kcal, setKcal] = useState(entry ? String(Math.abs(entry.kcal)) : '')
   const [protein, setProtein] = useState(entry?.protein != null ? String(entry.protein) : '')
   const [fat, setFat] = useState(entry?.fat != null ? String(entry.fat) : '')
   const [carbs, setCarbs] = useState(entry?.carbs != null ? String(entry.carbs) : '')
+  const [saveToLibrary, setSaveToLibrary] = useState(isLibraryContext)
   const [saving, setSaving] = useState(false)
+  const [guessing, setGuessing] = useState(false)
+
+  // Library search
+  const [libraryItems, setLibraryItems] = useState<SavedItem[]>([])
+  const [suggestions, setSuggestions] = useState<SavedItem[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const libraryFetched = useRef(false)
+
+  useEffect(() => {
+    if (libraryFetched.current) return
+    libraryFetched.current = true
+    library.list().then(setLibraryItems).catch(() => {})
+  }, [])
+
+  const handleNameChange = (val: string) => {
+    setName(val)
+    if (val.length >= 2) {
+      const q = val.toLowerCase()
+      const matches = libraryItems.filter(i =>
+        i.name.toLowerCase().includes(q) && i.item_type === (type === 'exercise' ? 'exercise' : 'food')
+      )
+      setSuggestions(matches.slice(0, 5))
+      setShowSuggestions(matches.length > 0)
+    } else {
+      setShowSuggestions(false)
+    }
+  }
+
+  const applySuggestion = (item: SavedItem) => {
+    setName(item.name)
+    if (item.kcal != null) setKcal(String(item.kcal))
+    if (item.protein != null) setProtein(String(item.protein))
+    if (item.fat != null) setFat(String(item.fat))
+    if (item.carbs != null) setCarbs(String(item.carbs))
+    setShowSuggestions(false)
+  }
+
+  const handleAiGuess = async () => {
+    if (!name.trim()) return
+    setGuessing(true)
+    try {
+      const parsed = await tracker.logText(name.trim())
+      setKcal(String(parsed.kcal))
+      if (parsed.protein != null) setProtein(String(parsed.protein))
+      if (parsed.fat != null) setFat(String(parsed.fat))
+      if (parsed.carbs != null) setCarbs(String(parsed.carbs))
+    } catch { /* silent */ } finally {
+      setGuessing(false)
+    }
+  }
+
+  const mealTypeLabel = (mt: MealType) => {
+    const map: Record<MealType, string> = {
+      breakfast: t('entryFormMealTypeBreakfast'),
+      lunch: t('entryFormMealTypeLunch'),
+      dinner: t('entryFormMealTypeDinner'),
+      snack: t('entryFormMealTypeSnack'),
+      other: t('entryFormMealTypeOther'),
+    }
+    return map[mt]
+  }
 
   const handleSave = async () => {
-    if (!name.trim() || !kcal) return
+    if (!name.trim() || (!kcal && !isLibraryContext)) return
     setSaving(true)
     try {
-      if (isEdit && entry) {
+      if (isLibraryContext) {
+        await library.create({
+          name: name.trim(),
+          item_type: type,
+          kcal: kcal ? Number(kcal) : undefined,
+          protein: protein ? Number(protein) : undefined,
+          fat: fat ? Number(fat) : undefined,
+          carbs: carbs ? Number(carbs) : undefined,
+        })
+      } else if (isEdit && entry) {
         await tracker.updateLog(entry.id, {
           description: name.trim(),
           kcal: Number(kcal),
@@ -52,6 +131,16 @@ export default function EntryFormSheet({
           carbs: carbs ? Number(carbs) : 0,
           source_type: 'manual',
         })
+        if (saveToLibrary && !isLibraryContext) {
+          library.create({
+            name: name.trim(),
+            item_type: 'food',
+            kcal: Number(kcal),
+            protein: protein ? Number(protein) : undefined,
+            fat: fat ? Number(fat) : undefined,
+            carbs: carbs ? Number(carbs) : undefined,
+          }).catch(() => {})
+        }
       }
       onSaved()
     } catch { /* silent */ } finally {
@@ -65,6 +154,12 @@ export default function EntryFormSheet({
     { label: t('photoLogCarbs'), value: carbs, set: setCarbs },
   ]
 
+  const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'other']
+
+  const canSave = isLibraryContext
+    ? Boolean(name.trim())
+    : Boolean(name.trim() && kcal)
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
       <div
@@ -72,14 +167,16 @@ export default function EntryFormSheet({
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-lg font-extrabold text-lily">
-          {isEdit ? t('entryFormEditTitle') : t('dashboardAddEntry')}
+          {isLibraryContext
+            ? t('plannerLibraryAdd')
+            : isEdit ? t('entryFormEditTitle') : t('dashboardAddEntry')}
         </h2>
 
         {!isEdit && (
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setType('food')}
+              onClick={() => { setType('food'); setShowSuggestions(false) }}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-extrabold border-[2px] transition-colors cursor-pointer ${
                 type === 'food' ? 'bg-primary border-lily text-lily' : 'bg-white border-lily/20 text-lily/40'
               }`}
@@ -88,7 +185,7 @@ export default function EntryFormSheet({
             </button>
             <button
               type="button"
-              onClick={() => setType('exercise')}
+              onClick={() => { setType('exercise'); setShowSuggestions(false) }}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-extrabold border-[2px] transition-colors cursor-pointer ${
                 type === 'exercise' ? 'bg-primary border-lily text-lily' : 'bg-white border-lily/20 text-lily/40'
               }`}
@@ -98,24 +195,82 @@ export default function EntryFormSheet({
           </div>
         )}
 
-        <input
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder={t('entryFormNamePlaceholder')}
-          className="w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors"
-        />
+        {/* Meal type selector — food only, not in edit mode */}
+        {!isEdit && type === 'food' && (
+          <div>
+            <p className="text-xs font-bold text-lily/50 mb-1.5">{t('entryFormMealType')}</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {mealTypes.map(mt => (
+                <button
+                  key={mt}
+                  type="button"
+                  onClick={() => setMealType(mt)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border-[2px] transition-colors cursor-pointer ${
+                    mealType === mt
+                      ? 'bg-primary border-lily text-lily'
+                      : 'bg-white border-lily/15 text-lily/40 hover:border-lily/30'
+                  }`}
+                >
+                  {mealTypeLabel(mt)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <div className="relative flex items-center">
+        {/* Name input with library suggestions */}
+        <div className="relative">
           <input
-            type="number"
-            value={kcal}
-            onChange={e => setKcal(e.target.value)}
-            placeholder={t('photoLogCalories')}
-            min={0}
-            className="w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 pr-16 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            type="text"
+            value={name}
+            onChange={e => handleNameChange(e.target.value)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            placeholder={t('entryFormNamePlaceholder')}
+            className="w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors"
           />
-          <span className="absolute right-4 text-lily/40 font-bold text-xs pointer-events-none select-none">kcal</span>
+          {showSuggestions && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border-[2px] border-lily/20 shadow-lg z-10 overflow-hidden">
+              {suggestions.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onMouseDown={() => applySuggestion(item)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-lily/5 transition-colors text-left cursor-pointer"
+                >
+                  <span className="text-sm font-semibold text-lily">{item.name}</span>
+                  {item.kcal != null && (
+                    <span className="text-xs font-bold text-lily/40 shrink-0 ml-2">{item.kcal} kcal</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* AI guess + kcal row */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type="number"
+              value={kcal}
+              onChange={e => setKcal(e.target.value)}
+              placeholder={t('photoLogCalories')}
+              min={0}
+              className="w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 pr-16 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lily/40 font-bold text-xs pointer-events-none select-none">kcal</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleAiGuess}
+            disabled={!name.trim() || guessing}
+            title={t('entryFormAiGuess')}
+            className="w-11 h-11 shrink-0 bg-lily/10 border-[2px] border-lily/20 rounded-xl flex items-center justify-center text-lily/60 hover:bg-lily/20 hover:border-lily/40 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {guessing
+              ? <Loader2 size={15} className="animate-spin" />
+              : <Sparkles size={15} />}
+          </button>
         </div>
 
         {type === 'food' && (
@@ -138,6 +293,19 @@ export default function EntryFormSheet({
           </div>
         )}
 
+        {/* Save to library toggle (not shown in library context or edit mode) */}
+        {!isLibraryContext && !isEdit && (
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={saveToLibrary}
+              onChange={e => setSaveToLibrary(e.target.checked)}
+              className="w-4 h-4 rounded accent-lily cursor-pointer"
+            />
+            <span className="text-xs font-bold text-lily/60">{t('entryFormSaveToLibrary')}</span>
+          </label>
+        )}
+
         <div className="flex gap-3 pt-1">
           <button
             type="button"
@@ -148,7 +316,7 @@ export default function EntryFormSheet({
           </button>
           <button
             type="button"
-            disabled={!name.trim() || !kcal || saving}
+            disabled={!canSave || saving}
             onClick={handleSave}
             className="flex-1 bg-lily text-primary rounded-2xl py-3 text-sm font-extrabold cursor-pointer disabled:opacity-40 disabled:cursor-default"
           >

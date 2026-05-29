@@ -46,6 +46,16 @@ Rules:
 _PLAN_SYSTEM: list[Any] = [{"type": "text", "text": _PLAN_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
 
 
+class AddItemRequest(BaseModel):
+    day_number: int
+    meal_name: str
+    description: str | None = None
+    kcal: int | None = None
+    protein: float | None = None
+    fat: float | None = None
+    carbs: float | None = None
+
+
 class GenerateRequest(BaseModel):
     days: int = 7
     meals_per_day: int = 3
@@ -88,6 +98,64 @@ def list_plans(
             ],
         })
     return result
+
+
+def _serialize_item(i: MealPlanItem) -> dict:
+    return {
+        "id": i.id,
+        "day_number": i.day_number,
+        "meal_name": i.meal_name,
+        "description": i.description,
+        "kcal": i.kcal,
+        "protein": i.protein,
+        "fat": i.fat,
+        "carbs": i.carbs,
+    }
+
+
+@router.delete("/items/{item_id}")
+def delete_plan_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    item = (
+        db.query(MealPlanItem)
+        .join(MealPlan, MealPlanItem.meal_plan_id == MealPlan.id)
+        .filter(MealPlanItem.id == item_id, MealPlan.user_id == current_user.id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/plans/{plan_id}/items")
+def add_plan_item(
+    plan_id: int,
+    body: AddItemRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    plan = db.query(MealPlan).filter(MealPlan.id == plan_id, MealPlan.user_id == current_user.id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    item = MealPlanItem(
+        meal_plan_id=plan_id,
+        day_number=body.day_number,
+        meal_name=body.meal_name,
+        description=body.description,
+        kcal=body.kcal,
+        protein=body.protein,
+        fat=body.fat,
+        carbs=body.carbs,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _serialize_item(item)
 
 
 @router.post("/generate")

@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Dumbbell, Utensils } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import EntryFormSheet from '../components/EntryFormSheet'
 import { EntryRow } from '../components/EntryRow'
 import { useLanguage } from '../context/LanguageContext'
-import { mealPlanner, tracker, type MealPlan, type MealPlanItem, type DailyData, type DailyEntry, ApiError } from '../lib/api'
+import { mealPlanner, tracker, library, type MealPlan, type MealPlanItem, type DailyData, type DailyEntry, type SavedItem, ApiError } from '../lib/api'
 import { NOMNOM_EATING_RAMEN } from '../assets'
 
 type Tab = 'plan' | 'saved'
+type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
+
+// Maps slot index in MEALS array → MealType value passed to EntryFormSheet
+const SLOT_MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
 
 function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
   const { ta } = useLanguage()
@@ -36,12 +40,29 @@ function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: n
   )
 }
 
-function DayView({ dayIndex, items, onAdd }: { dayIndex: number; items: MealPlanItem[]; onAdd?: () => void }) {
+function DayView({
+  dayIndex,
+  items,
+  onAdd,
+  onItemDeleted,
+}: {
+  dayIndex: number
+  items: MealPlanItem[]
+  onAdd?: (mealType: MealType) => void
+  onItemDeleted?: (itemId: number) => void
+}) {
   const { t, ta } = useLanguage()
   const MEALS = ta('plannerMeals')
-  // day_number is 1-based; dayIndex is 0-based (Mon=0)
   const dayItems = items.filter(i => i.day_number === dayIndex + 1)
   const totalKcal = dayItems.reduce((s, m) => s + (m.kcal ?? 0), 0)
+  const emptySlots = MEALS.slice(dayItems.length)
+
+  const handleDelete = async (itemId: number) => {
+    try {
+      await mealPlanner.deleteItem(itemId)
+      onItemDeleted?.(itemId)
+    } catch { /* silent */ }
+  }
 
   return (
     <div className="space-y-3">
@@ -51,47 +72,153 @@ function DayView({ dayIndex, items, onAdd }: { dayIndex: number; items: MealPlan
           <span className="text-xs font-extrabold text-lily">{totalKcal} kcal</span>
         </div>
       )}
-      {dayItems.length === 0 ? (
+
+      {dayItems.map(item => (
+        <div key={item.id} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{item.meal_name}</span>
+            <div className="flex items-center gap-2">
+              {item.kcal && <span className="text-xs font-bold text-lily/40">{item.kcal} kcal</span>}
+              <button
+                onClick={() => handleDelete(item.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-lg text-lily/30 hover:text-red-400 hover:bg-red-50 cursor-pointer"
+                aria-label="Delete"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+          <div>
+            {/* Show description (dish name) as title; fall back to meal_name if missing */}
+            <p className="text-sm font-bold text-lily">{item.description ?? item.meal_name}</p>
+          </div>
+          {(item.protein || item.fat || item.carbs) && (
+            <div className="flex gap-3 mt-2">
+              {item.protein && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
+              {item.fat && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
+              {item.carbs && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Empty slots — only shown when there's room; replaces the "no meals" message */}
+      {emptySlots.length > 0 ? (
+        emptySlots.map((meal, idx) => (
+          <div key={`empty-${idx}`} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{meal}</span>
+            </div>
+            <button
+              onClick={() => onAdd?.(SLOT_MEAL_TYPES[dayItems.length + idx] ?? 'other')}
+              className="flex items-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer"
+            >
+              <Plus size={14} /> {t('plannerAddMeal')}
+            </button>
+          </div>
+        ))
+      ) : (
+        // All slots filled — still show an add button at the bottom
+        <button
+          onClick={() => onAdd?.('other')}
+          className="w-full flex items-center justify-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer py-2"
+        >
+          <Plus size={14} /> {t('plannerAddMeal')}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function LibraryTab() {
+  const { t } = useLanguage()
+  const [items, setItems] = useState<SavedItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const data = await library.list()
+      setItems(data)
+    } catch { /* silent */ } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { ;(async () => { await fetchItems() })() }, [fetchItems])
+
+  const handleDelete = async (id: number) => {
+    try {
+      await library.delete(id)
+      setItems(prev => prev.filter(i => i.id !== id))
+    } catch { /* silent */ }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 size={28} className="text-lily animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => setShowForm(true)}
+        className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold border-[2px] border-lily/30 text-lily/60 hover:border-lily/50 hover:text-lily transition-colors cursor-pointer"
+      >
+        <Plus size={16} /> {t('plannerLibraryAdd')}
+      </button>
+
+      {items.length === 0 ? (
         <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-6 text-center">
-          <p className="text-sm font-semibold text-lily/30">{t('plannerNoMeals')}</p>
+          <p className="text-sm font-semibold text-lily/30">{t('plannerSavedEmpty')}</p>
         </div>
       ) : (
-        dayItems.map(item => (
-          <div key={item.id} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{item.meal_name}</span>
-              {item.kcal && <span className="text-xs font-bold text-lily/40">{item.kcal} kcal</span>}
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-lily">{item.meal_name}</p>
-                {item.description && <p className="text-xs font-semibold text-lily/40 mt-0.5">{item.description}</p>}
+        items.map(item => (
+          <div key={item.id} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 group">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {item.item_type === 'exercise'
+                  ? <Dumbbell size={15} className="text-lily/40 shrink-0" />
+                  : <Utensils size={15} className="text-lily/40 shrink-0" />}
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-lily truncate">{item.name}</p>
+                  <p className="text-[10px] font-bold text-lily/40 uppercase tracking-wider">
+                    {item.item_type === 'exercise' ? t('plannerLibraryExercise') : t('plannerLibraryFood')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {item.kcal != null && <span className="text-xs font-bold text-lily/50">{item.kcal} kcal</span>}
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-lg text-lily/30 hover:text-red-400 hover:bg-red-50 cursor-pointer"
+                  aria-label="Delete"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
-            {(item.protein || item.fat || item.carbs) && (
+            {item.item_type === 'food' && (item.protein || item.fat || item.carbs) && (
               <div className="flex gap-3 mt-2">
-                {item.protein && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
-                {item.fat && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
-                {item.carbs && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
+                {item.protein != null && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
+                {item.fat != null && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
+                {item.carbs != null && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
               </div>
             )}
           </div>
         ))
       )}
-      {/* Placeholder slots for empty meal types */}
-      {MEALS.slice(dayItems.length).map((meal, idx) => (
-        <div key={`empty-${idx}`} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{meal}</span>
-          </div>
-          <button
-            onClick={onAdd}
-            className="flex items-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer"
-          >
-            <Plus size={14} /> {t('plannerAddMeal')}
-          </button>
-        </div>
-      ))}
+
+      {showForm && (
+        <EntryFormSheet
+          context="library"
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); fetchItems() }}
+        />
+      )}
     </div>
   )
 }
@@ -160,8 +287,7 @@ function getWeekStart(value: Date) {
 }
 
 export default function PlannerPage() {
-  const { t, ta } = useLanguage()
-  const DAYS = ta('plannerDays')
+  const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('plan')
   const [selectedDay, setSelectedDay] = useState(() => {
     const d = new Date().getDay()
@@ -178,6 +304,7 @@ export default function PlannerPage() {
   const [dailyData, setDailyData] = useState<DailyData | null>(null)
   const [showEntryForm, setShowEntryForm] = useState(false)
   const [editEntry, setEditEntry] = useState<DailyEntry | undefined>()
+  const [pendingMealType, setPendingMealType] = useState<MealType>('other')
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -233,6 +360,28 @@ export default function PlannerPage() {
     } finally {
       setGenerating(false)
     }
+  }
+
+  const handlePlanItemDeleted = (itemId: number) => {
+    if (!activePlan) return
+    setActivePlan(p => p ? { ...p, items: p.items.filter(i => i.id !== itemId) } : p)
+    setPlans(ps => ps.map(p =>
+      p.id === activePlan.id ? { ...p, items: p.items.filter(i => i.id !== itemId) } : p
+    ))
+  }
+
+  const handleDeleteDailyEntry = async (id: number, type: 'food' | 'exercise') => {
+    try {
+      if (type === 'exercise') await tracker.deleteExercise(id)
+      else await tracker.deleteLog(id)
+      setDailyData(d => d ? { ...d, entries: d.entries.filter(e => e.id !== id) } : d)
+    } catch { /* silent */ }
+  }
+
+  const openAddForm = (mealType: MealType) => {
+    setEditEntry(undefined)
+    setPendingMealType(mealType)
+    setShowEntryForm(true)
   }
 
   const currentItems = activePlan?.items ?? []
@@ -297,9 +446,7 @@ export default function PlannerPage() {
                 tab === tabKey ? 'bg-white text-lily shadow-sm' : 'text-lily/40'
               }`}
             >
-              {tabKey === 'plan'
-                ? t('plannerTabPlan').replace('{day}', DAYS[selectedDay])
-                : t('plannerTabSaved')}
+              {tabKey === 'plan' ? t('plannerTabPlan') : t('plannerTabSaved')}
             </button>
           ))}
         </div>
@@ -309,20 +456,23 @@ export default function PlannerPage() {
             <Loader2 size={28} className="text-lily animate-spin" />
           </div>
         ) : tab === 'plan' ? (
-          <DayView dayIndex={selectedDay} items={currentItems} onAdd={() => { setEditEntry(undefined); setShowEntryForm(true) }} />
+          <DayView
+            dayIndex={selectedDay}
+            items={currentItems}
+            onAdd={openAddForm}
+            onItemDeleted={handlePlanItemDeleted}
+          />
         ) : (
-          <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-6 text-center">
-            <p className="text-sm font-semibold text-lily/30">{t('plannerSavedEmpty')}</p>
-          </div>
+          <LibraryTab />
         )}
 
-        {/* ── Today's log ── */}
-        {dailyData && (
+        {/* Today's log */}
+        {tab === 'plan' && dailyData && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
               <button
-                onClick={() => { setEditEntry(undefined); setShowEntryForm(true) }}
+                onClick={() => openAddForm('other')}
                 className="w-8 h-8 rounded-xl bg-lily/10 flex items-center justify-center text-lily/60 hover:bg-lily/20 transition-colors cursor-pointer"
                 aria-label={t('dashboardAddEntry')}
               >
@@ -337,7 +487,8 @@ export default function PlannerPage() {
                   <EntryRow
                     key={`${e.type}-${e.id}`}
                     entry={e}
-                    onEdit={entry => { setEditEntry(entry); setShowEntryForm(true) }}
+                    onDelete={id => handleDeleteDailyEntry(id, e.type)}
+                    onEdit={entry => { setEditEntry(entry); setPendingMealType('other'); setShowEntryForm(true) }}
                   />
                 ))
               )}
@@ -351,6 +502,8 @@ export default function PlannerPage() {
       {showEntryForm && (
         <EntryFormSheet
           entry={editEntry}
+          defaultMealType={pendingMealType}
+          context="planner"
           onClose={() => setShowEntryForm(false)}
           onSaved={() => { setShowEntryForm(false); fetchDaily() }}
         />

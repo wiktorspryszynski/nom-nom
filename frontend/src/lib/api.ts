@@ -162,6 +162,7 @@ export const tracker = {
   updateLog: (id: number, entry: { description: string; kcal: number; protein?: number; fat?: number; carbs?: number }) =>
     api.put<{ ok: boolean }>(`/api/tracker/log/${id}`, entry),
   deleteLog: (id: number) => api.delete<{ ok: boolean }>(`/api/tracker/log/${id}`),
+  deleteExercise: (id: number) => api.delete<{ ok: boolean }>(`/api/tracker/exercise/${id}`),
   logWater: (glasses: number) => api.post<{ ok: boolean; glasses: number }>('/api/tracker/water', { glasses }),
   search: (q: string) => api.get<FoodSearchResult[]>(`/api/tracker/search?q=${encodeURIComponent(q)}`),
 }
@@ -181,6 +182,26 @@ export const mealPlanner = {
   list: () => api.get<MealPlan[]>('/api/meal-planner/plans'),
   generate: (params: { days?: number; meals_per_day?: number; preferences?: string; start_date?: string }) =>
     api.post<MealPlan>('/api/meal-planner/generate', params),
+  deleteItem: (itemId: number) => api.delete<{ ok: boolean }>(`/api/meal-planner/items/${itemId}`),
+  addItem: (planId: number, item: { day_number: number; meal_name: string; description?: string; kcal?: number; protein?: number; fat?: number; carbs?: number }) =>
+    api.post<MealPlanItem>(`/api/meal-planner/plans/${planId}/items`, item),
+}
+
+export interface SavedItem {
+  id: number
+  name: string
+  item_type: 'food' | 'exercise'
+  kcal?: number
+  protein?: number
+  fat?: number
+  carbs?: number
+  duration_min?: number
+}
+
+export const library = {
+  list: () => api.get<SavedItem[]>('/api/library/'),
+  create: (item: Omit<SavedItem, 'id'>) => api.post<SavedItem>('/api/library/', item),
+  delete: (id: number) => api.delete<{ ok: boolean }>(`/api/library/${id}`),
 }
 
 export const health = {

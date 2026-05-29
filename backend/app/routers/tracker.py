@@ -398,6 +398,21 @@ def delete_log(
     return {"ok": True}
 
 
+@router.delete("/exercise/{entry_id}")
+def delete_exercise(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete an exercise log entry."""
+    entry = db.query(ExerciseLog).filter(ExerciseLog.id == entry_id, ExerciseLog.user_id == current_user.id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/water")
 def log_water(
     body: dict[str, Any],
