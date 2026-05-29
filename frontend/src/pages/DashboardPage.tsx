@@ -73,7 +73,7 @@ function MacroBar({ label, eaten, goal, color, icon: Icon }: {
       <div className="flex-1 h-3 bg-lily/10 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs font-bold text-lily/60 w-16 text-right shrink-0">{eaten} / {goal} g</span>
+      <span className="text-xs font-bold text-lily/60 w-18 text-right shrink-0">{eaten} / {goal} g</span>
     </div>
   )
 }
