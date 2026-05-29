@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import Token, TokenData
+from app.schemas.auth import Token
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -24,8 +25,8 @@ def get_password_hash(plain: str) -> str:
     return pwd_context.hash(plain)
 
 
-def create_access_token(data: dict) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+def create_access_token(data: dict[str, Any]) -> str:
+    expire = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=settings.access_token_expire_minutes)
     return jwt.encode({**data, "exp": expire}, settings.secret_key, algorithm=settings.algorithm)
 
 
@@ -37,7 +38,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        sub: str = payload.get("sub")
+        sub: str | None = payload.get("sub")
         if sub is None:
             raise credentials_exc
     except JWTError:
@@ -53,7 +54,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form.username).first()
     # GitHub-only users have no password — block password login for them
-    if not user or not user.hashed_password or not verify_password(form.password, user.hashed_password):
+    if not user or user.hashed_password is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect credentials")
+    if not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect credentials")
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
@@ -82,7 +85,7 @@ def me(current_user: User = Depends(get_current_user)):
 
 @router.put("/me")
 def update_me(
-    body: dict,
+    body: dict[str, Any],
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

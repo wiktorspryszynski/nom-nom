@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
@@ -8,23 +9,23 @@ from app.database import Base
 class MealPlan(Base):
     __tablename__ = "meal_plans"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    start_date = Column(Date, nullable=False)
-    days_count = Column(Integer, nullable=False, default=7)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    days_count: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class MealPlanItem(Base):
     __tablename__ = "meal_plan_items"
 
-    id = Column(Integer, primary_key=True)
-    meal_plan_id = Column(Integer, ForeignKey("meal_plans.id", ondelete="CASCADE"), nullable=False, index=True)
-    day_number = Column(Integer, nullable=False)  # 1-based
-    meal_name = Column(String, nullable=False)     # e.g. 'Śniadanie', 'Obiad'
-    description = Column(Text, nullable=True)
-    kcal = Column(Integer, nullable=True)
-    protein = Column(Float, nullable=True)
-    fat = Column(Float, nullable=True)
-    carbs = Column(Float, nullable=True)
-    recipe_text = Column(Text, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    meal_plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("meal_plans.id", ondelete="CASCADE"), nullable=False, index=True)
+    day_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    meal_name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    kcal: Mapped[int | None] = mapped_column(Integer)
+    protein: Mapped[float | None] = mapped_column(Float)
+    fat: Mapped[float | None] = mapped_column(Float)
+    carbs: Mapped[float | None] = mapped_column(Float)
+    recipe_text: Mapped[str | None] = mapped_column(Text)

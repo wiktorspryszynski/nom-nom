@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -60,7 +60,7 @@ def add_measurement(
     if not body.metrics:
         raise HTTPException(status_code=422, detail="No metrics provided")
 
-    measured_at = body.measured_at or datetime.utcnow()
+    measured_at = body.measured_at or datetime.now(timezone.utc).replace(tzinfo=None)
     created = []
     for metric_type, value in body.metrics.items():
         unit = _UNITS.get(metric_type, "")

@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 from app.enums import MetricType
@@ -16,9 +17,9 @@ class BodyMeasurement(Base):
     """
     __tablename__ = "body_measurements"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    measured_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    metric_type = Column(SAEnum(MetricType, **_enum_kw), nullable=False, index=True)
-    value = Column(Float, nullable=False)
-    unit = Column(String, nullable=False, default="")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    measured_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    metric_type: Mapped[MetricType] = mapped_column(SAEnum(MetricType, **_enum_kw), nullable=False, index=True)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String, nullable=False, default="")

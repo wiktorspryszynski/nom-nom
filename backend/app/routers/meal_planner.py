@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from typing import Any
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
@@ -40,6 +41,9 @@ Rules:
 - Keep descriptions concrete (name the dish, e.g. "Owsianka z bananem i miodem").
 - Do not add any text outside the JSON array.
 """
+
+# Typed as list[Any] so Pylance accepts cache_control (not in TextBlockParam TypedDict)
+_PLAN_SYSTEM: list[Any] = [{"type": "text", "text": _PLAN_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
 
 
 class GenerateRequest(BaseModel):
@@ -114,11 +118,7 @@ def generate_plan(
         message = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=4096,
-            system=[{
-                "type": "text",
-                "text": _PLAN_SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }],
+            system=_PLAN_SYSTEM,
             messages=[{"role": "user", "content": user_message}],
         )
     except anthropic.APIStatusError as e:
@@ -127,8 +127,9 @@ def generate_plan(
         raise
 
     try:
-        items_data = json.loads(message.content[0].text)
-    except (json.JSONDecodeError, IndexError):
+        block = message.content[0]
+        items_data = json.loads(block.text)  # type: ignore[union-attr]
+    except (json.JSONDecodeError, IndexError, AttributeError):
         raise HTTPException(status_code=422, detail="AI response could not be parsed")
 
     if not isinstance(items_data, list):

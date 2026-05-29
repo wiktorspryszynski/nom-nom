@@ -2,6 +2,7 @@ import base64
 import json
 from collections import defaultdict
 from datetime import date, datetime, timezone
+from typing import Any
 
 import anthropic
 import httpx
@@ -66,6 +67,9 @@ _TEXT_PROMPT = (
 
 _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
+# Typed as list[Any] so Pylance accepts cache_control (not in TextBlockParam TypedDict)
+_TEXT_SYSTEM: list[Any] = [{"type": "text", "text": _TEXT_PROMPT, "cache_control": {"type": "ephemeral"}}]
+
 
 # ---------------------------------------------------------------------------
 # AI call quota guards
@@ -88,7 +92,7 @@ def _check_demo_quota(user: User, db: Session) -> None:
         return
     if user.demo_ai_calls_used >= settings.demo_ai_call_limit:
         raise HTTPException(status_code=429, detail="DEMO_QUOTA_EXCEEDED")
-    user.demo_ai_calls_used += 1
+    user.demo_ai_calls_used = user.demo_ai_calls_used + 1
     db.commit()
 
 
@@ -117,11 +121,7 @@ def _call_claude_haiku(entry_text: str) -> dict:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=256,
-            system=[{
-                "type": "text",
-                "text": _TEXT_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }],
+            system=_TEXT_SYSTEM,
             messages=[{"role": "user", "content": entry_text}],
         )
     except anthropic.APIStatusError as e:
@@ -129,40 +129,36 @@ def _call_claude_haiku(entry_text: str) -> dict:
             raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
         raise
     try:
-        return json.loads(message.content[0].text)
-    except (json.JSONDecodeError, IndexError):
+        block = message.content[0]
+        return json.loads(block.text)  # type: ignore[union-attr]
+    except (json.JSONDecodeError, IndexError, AttributeError):
         raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
 
 
 def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
     """Call Claude Sonnet Vision with cached text prompt. Raises HTTPException 503 if credits exhausted."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    vision_messages: list[Any] = [{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": _VISION_PROMPT, "cache_control": {"type": "ephemeral"}},
+            {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
+        ],
+    }]
     try:
         message = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=512,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": _VISION_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                    {
-                        "type": "image",
-                        "source": {"type": "base64", "media_type": media_type, "data": b64},
-                    },
-                ],
-            }],
+            messages=vision_messages,
         )
     except anthropic.APIStatusError as e:
         if e.status_code == 402:
             raise HTTPException(status_code=503, detail="AI_UNAVAILABLE")
         raise
     try:
-        return json.loads(message.content[0].text)
-    except (json.JSONDecodeError, IndexError):
+        block = message.content[0]
+        return json.loads(block.text)  # type: ignore[union-attr]
+    except (json.JSONDecodeError, IndexError, AttributeError):
         raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
 
 
@@ -372,7 +368,7 @@ def delete_log(
 
 @router.post("/water")
 def log_water(
-    body: dict,
+    body: dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
