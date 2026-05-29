@@ -204,6 +204,7 @@ const pl = {
   calcActivityActiveDesc: '3-5 treningów w tygodniu',
   calcActivityVery: 'Bardzo aktywny',
   calcActivityVeryDesc: 'codziennie lub praca fizyczna',
+  calcTooLow: 'Ta wartość jest zbyt niska dla zdrowego funkcjonowania. Skonsultuj się z dietetykiem.',
 
   // ── Desktop QR banner ─────────────────────────────────────────────────────
   desktopBannerTitle: 'Najlepsza na telefonie',
@@ -459,6 +460,7 @@ const en: Translations = {
   calcActivityActiveDesc: '3-5 workouts per week',
   calcActivityVery: 'Very active',
   calcActivityVeryDesc: 'daily training or physical job',
+  calcTooLow: 'This value is too low for healthy functioning. Consult a dietitian.',
 
   // ── Desktop QR banner ─────────────────────────────────────────────────────
   desktopBannerTitle: 'Best on mobile',

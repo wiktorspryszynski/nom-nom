@@ -276,6 +276,7 @@ export default function ProfilePage() {
 
       {showCalcModal && (
         <CalorieCalculatorModal
+          variant="dialog"
           sex={(user?.sex as 'M' | 'F' | null) ?? null}
           height={String(user?.height_cm ?? '')}
           weight={String(user?.weight_kg ?? '')}
