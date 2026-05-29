@@ -206,6 +206,16 @@ const pl = {
   calcActivityVeryDesc: 'codziennie lub praca fizyczna',
   calcTooLow: 'Ta wartość jest zbyt niska dla zdrowego funkcjonowania. Skonsultuj się z dietetykiem.',
 
+  // ── Calorie target calculator ──────────────────────────────────────────────
+  targetTitle: 'Cel kaloryczny',
+  targetTdeeLabel: 'Twoje zapotrzebowanie',
+  targetRateLabel: 'Tempo',
+  targetResult: 'Twój cel kaloryczny',
+  targetNoTdee: 'Najpierw oblicz swoje zapotrzebowanie kaloryczne (OBECNE).',
+  profileCalcSection: 'Oblicz swoje kalorie',
+  profileCalcCurrent: 'OBECNE',
+  profileCalcTarget: 'CEL',
+
   // ── Desktop QR banner ─────────────────────────────────────────────────────
   desktopBannerTitle: 'Najlepsza na telefonie',
   desktopBannerBody: 'Zeskanuj kod QR i otwórz NomNom na swoim smartfonie.',
@@ -461,6 +471,16 @@ const en: Translations = {
   calcActivityVery: 'Very active',
   calcActivityVeryDesc: 'daily training or physical job',
   calcTooLow: 'This value is too low for healthy functioning. Consult a dietitian.',
+
+  // ── Calorie target calculator ──────────────────────────────────────────────
+  targetTitle: 'Calorie target',
+  targetTdeeLabel: 'Your TDEE',
+  targetRateLabel: 'Rate',
+  targetResult: 'Your calorie target',
+  targetNoTdee: 'First calculate your daily energy needs (CURRENT).',
+  profileCalcSection: 'Calculate your calories',
+  profileCalcCurrent: 'CURRENT',
+  profileCalcTarget: 'TARGET',
 
   // ── Desktop QR banner ─────────────────────────────────────────────────────
   desktopBannerTitle: 'Best on mobile',

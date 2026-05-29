@@ -4,6 +4,7 @@ import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
 import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
+import CalorieTargetModal from '../components/CalorieTargetModal'
 import { profile, type UserProfile } from '../lib/api'
 import { NOMNOM_HAPPY } from '../assets'
 
@@ -89,6 +90,7 @@ export default function ProfilePage() {
   const [proteinGoal, setProteinGoal] = useState('')
   const [height, setHeight] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
+  const [showTargetModal, setShowTargetModal] = useState(false)
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -205,15 +207,6 @@ export default function ProfilePage() {
           </div>
           <GoalField label={t('profileHeight')} value={height} unit="cm" onChange={setHeight} onSave={saveProfile} />
           <GoalField label={t('profileTdee')} value={tdee} unit="kcal" onChange={setTdee} onSave={saveProfile} />
-          <div className="-mt-2 pb-1">
-            <button
-              type="button"
-              onClick={() => setShowCalcModal(true)}
-              className="text-xs font-bold text-lily/45 hover:text-lily/70 transition-colors cursor-pointer"
-            >
-              {t('signupCalcLink')}
-            </button>
-          </div>
           <GoalField
             label={t('profileCalorieTarget')}
             value={calorieTarget}
@@ -231,6 +224,30 @@ export default function ProfilePage() {
             onSave={saveProfile}
             hint={recommendedProtein ? t('profileProteinRecommended').replace('{g}', String(recommendedProtein)) : undefined}
           />
+        </div>
+
+        {/* ── Calculate your calories ── */}
+        <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4 py-4">
+          <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest mb-3">
+            {t('profileCalcSection')}
+          </h2>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowCalcModal(true)}
+              className="flex-1 py-3 rounded-2xl border-[3px] border-lily text-sm font-extrabold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors"
+            >
+              {t('profileCalcCurrent')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTargetModal(true)}
+              disabled={!tdee}
+              className="flex-1 py-3 rounded-2xl border-[3px] border-lily text-sm font-extrabold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default"
+            >
+              {t('profileCalcTarget')}
+            </button>
+          </div>
         </div>
 
         {/* ── App section ── */}
@@ -273,6 +290,31 @@ export default function ProfilePage() {
       </div>
 
       <BottomNav />
+
+      {showTargetModal && (
+        <CalorieTargetModal
+          tdee={tdee ? Number(tdee) : null}
+          currentWeight={user?.weight_kg ?? null}
+          weightTarget={weightGoal ? Number(weightGoal) : null}
+          onConfirm={async kcal => {
+            setCalorieTarget(String(kcal))
+            setShowTargetModal(false)
+            setSaving(true)
+            try {
+              await profile.update({
+                calorie_target: kcal,
+                tdee_kcal: tdee ? Number(tdee) : undefined,
+                weight_target: weightGoal ? Number(weightGoal) : undefined,
+                protein_target: proteinGoal ? Number(proteinGoal) : undefined,
+                height_cm: height ? Number(height) : undefined,
+              })
+            } catch { /* silent */ } finally {
+              setSaving(false)
+            }
+          }}
+          onClose={() => setShowTargetModal(false)}
+        />
+      )}
 
       {showCalcModal && (
         <CalorieCalculatorModal
