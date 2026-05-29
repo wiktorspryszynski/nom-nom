@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
+import EntryFormSheet from '../components/EntryFormSheet'
+import { EntryRow } from '../components/EntryRow'
 import { useLanguage } from '../context/LanguageContext'
-import { mealPlanner, type MealPlan, type MealPlanItem, ApiError } from '../lib/api'
+import { mealPlanner, tracker, type MealPlan, type MealPlanItem, type DailyData, type DailyEntry, ApiError } from '../lib/api'
 import { NOMNOM_EATING_RAMEN } from '../assets'
 
 type Tab = 'plan' | 'saved'
@@ -34,7 +36,7 @@ function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: n
   )
 }
 
-function DayView({ dayIndex, items }: { dayIndex: number; items: MealPlanItem[] }) {
+function DayView({ dayIndex, items, onAdd }: { dayIndex: number; items: MealPlanItem[]; onAdd?: () => void }) {
   const { t, ta } = useLanguage()
   const MEALS = ta('plannerMeals')
   // day_number is 1-based; dayIndex is 0-based (Mon=0)
@@ -82,7 +84,10 @@ function DayView({ dayIndex, items }: { dayIndex: number; items: MealPlanItem[] 
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{meal}</span>
           </div>
-          <button className="flex items-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer">
+          <button
+            onClick={onAdd}
+            className="flex items-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer"
+          >
             <Plus size={14} /> {t('plannerAddMeal')}
           </button>
         </div>
@@ -170,6 +175,9 @@ export default function PlannerPage() {
   const [aiAvailable, setAiAvailable] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [dailyData, setDailyData] = useState<DailyData | null>(null)
+  const [showEntryForm, setShowEntryForm] = useState(false)
+  const [editEntry, setEditEntry] = useState<DailyEntry | undefined>()
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -181,12 +189,20 @@ export default function PlannerPage() {
     }
   }, [])
 
+  const fetchDaily = useCallback(async () => {
+    try {
+      const data = await tracker.getDaily()
+      setDailyData(data)
+    } catch { /* silent */ }
+  }, [])
+
   useEffect(() => {
     ;(async () => {
       await fetchPlans()
+      fetchDaily()
       fetch('/api/health').then(r => r.json()).then(d => setAiAvailable(d.ai_available ?? true)).catch(() => {})
     })()
-  }, [fetchPlans])
+  }, [fetchPlans, fetchDaily])
 
   const handleGenerate = async (preferences: string) => {
     setGenerating(true)
@@ -293,15 +309,53 @@ export default function PlannerPage() {
             <Loader2 size={28} className="text-lily animate-spin" />
           </div>
         ) : tab === 'plan' ? (
-          <DayView dayIndex={selectedDay} items={currentItems} />
+          <DayView dayIndex={selectedDay} items={currentItems} onAdd={() => { setEditEntry(undefined); setShowEntryForm(true) }} />
         ) : (
           <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-6 text-center">
             <p className="text-sm font-semibold text-lily/30">{t('plannerSavedEmpty')}</p>
           </div>
         )}
+
+        {/* ── Today's log ── */}
+        {dailyData && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
+              <button
+                onClick={() => { setEditEntry(undefined); setShowEntryForm(true) }}
+                className="w-8 h-8 rounded-xl bg-lily/10 flex items-center justify-center text-lily/60 hover:bg-lily/20 transition-colors cursor-pointer"
+                aria-label={t('dashboardAddEntry')}
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4">
+              {dailyData.entries.length === 0 ? (
+                <p className="text-center text-sm font-semibold text-lily/30 py-6">{t('dashboardNoEntries')}</p>
+              ) : (
+                dailyData.entries.map(e => (
+                  <EntryRow
+                    key={`${e.type}-${e.id}`}
+                    entry={e}
+                    onEdit={entry => { setEditEntry(entry); setShowEntryForm(true) }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <GenerateModal open={showModal} onClose={() => setShowModal(false)} onGenerate={handleGenerate} />
+
+      {showEntryForm && (
+        <EntryFormSheet
+          entry={editEntry}
+          onClose={() => setShowEntryForm(false)}
+          onSaved={() => { setShowEntryForm(false); fetchDaily() }}
+        />
+      )}
+
       <BottomNav />
     </div>
   )

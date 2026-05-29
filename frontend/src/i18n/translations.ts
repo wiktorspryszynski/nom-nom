@@ -171,6 +171,10 @@ const pl = {
   profileDemoCallsLabel: 'Wykorzystane wywołania AI',
   profileDemoCallsNote: 'Tekst, zdjęcia posiłków, generowanie jadłospisu. Limit dożywotni.',
 
+  // ── Entry form sheet ──────────────────────────────────────────────────────
+  entryFormEditTitle: 'Edytuj wpis',
+  entryFormNamePlaceholder: 'Nazwa posiłku lub aktywności',
+
   // ── Calorie calculator ────────────────────────────────────────────────────
   calcTitle: 'Kalkulator kalorii',
   calcClose: 'Zamknij',
@@ -409,6 +413,10 @@ const en: Translations = {
   profileDemoAccount: 'Demo account',
   profileDemoCallsLabel: 'AI calls used',
   profileDemoCallsNote: 'Text logging, food photos, meal plan generation. Lifetime limit.',
+
+  // ── Entry form sheet ──────────────────────────────────────────────────────
+  entryFormEditTitle: 'Edit entry',
+  entryFormNamePlaceholder: 'Meal or activity name',
 
   // ── Calorie calculator ────────────────────────────────────────────────────
   calcTitle: 'Calorie calculator',

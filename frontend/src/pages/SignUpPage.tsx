@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
@@ -80,6 +80,98 @@ function PlainInput(props: React.InputHTMLAttributes<HTMLInputElement> & { borde
       style={{ borderRadius }}
       className={`w-full bg-ivory text-lily placeholder:text-lily/50 px-4 py-3 text-base font-semibold outline-none ${readOnly ? 'opacity-50 cursor-default select-none' : ''}`}
     />
+  )
+}
+
+function DateInput({
+  value,
+  onChange,
+  borderRadius,
+}: {
+  value: string
+  onChange: (iso: string) => void
+  borderRadius: string
+}) {
+  const [d, setD] = useState(value ? value.slice(8, 10) : '')
+  const [m, setM] = useState(value ? value.slice(5, 7) : '')
+  const [y, setY] = useState(value ? value.slice(0, 4) : '')
+  const monthRef = useRef<HTMLInputElement>(null)
+  const yearRef = useRef<HTMLInputElement>(null)
+
+  const emit = (day: string, month: string, year: string) => {
+    if (!day || !month || year.length < 4) { onChange(''); return }
+    const dd = day.padStart(2, '0')
+    const mm = month.padStart(2, '0')
+    const dNum = parseInt(day, 10)
+    const mNum = parseInt(month, 10)
+    const yNum = parseInt(year, 10)
+    const maxYear = new Date().getFullYear()
+    if (dNum >= 1 && dNum <= 31 && mNum >= 1 && mNum <= 12 && yNum >= maxYear - 120 && yNum <= maxYear) {
+      onChange(`${year}-${mm}-${dd}`)
+    } else {
+      onChange('')
+    }
+  }
+
+  const handleDay = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    setD(v)
+    if (v.length === 2) monthRef.current?.focus()
+    emit(v, m, y)
+  }
+
+  const handleMonth = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    setM(v)
+    if (v.length === 2) yearRef.current?.focus()
+    emit(d, v, y)
+  }
+
+  const handleYear = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+    setY(v)
+    emit(d, m, v)
+  }
+
+  const inputClass = 'bg-transparent text-lily placeholder:text-lily/30 text-base font-semibold outline-none text-center'
+
+  return (
+    <div
+      className="w-full bg-ivory flex items-center px-4 py-3 gap-1"
+      style={{ borderRadius }}
+    >
+      <input
+        type="text"
+        inputMode="numeric"
+        value={d}
+        onChange={handleDay}
+        placeholder="DD"
+        maxLength={2}
+        className={`w-9 ${inputClass}`}
+      />
+      <span className="text-lily/30 font-bold select-none">/</span>
+      <input
+        ref={monthRef}
+        type="text"
+        inputMode="numeric"
+        value={m}
+        onChange={handleMonth}
+        placeholder="MM"
+        maxLength={2}
+        className={`w-9 ${inputClass}`}
+      />
+      <span className="text-lily/30 font-bold select-none">/</span>
+      <input
+        ref={yearRef}
+        type="text"
+        inputMode="numeric"
+        value={y}
+        onChange={handleYear}
+        placeholder="YYYY"
+        maxLength={4}
+        className={`w-16 ${inputClass}`}
+      />
+    </div>
   )
 }
 
@@ -386,12 +478,9 @@ export default function SignUpPage() {
               r2="12px 6px 16px 8px / 6px 14px 8px 16px"
               r3="4px 18px 8px 12px / 18px 4px 12px 8px"
             >
-              <PlainInput
-                type="date"
+              <DateInput
                 value={data.birthDate}
-                onChange={set('birthDate')}
-                max={new Date().toISOString().slice(0, 10)}
-                min={`${new Date().getFullYear() - 120}-01-01`}
+                onChange={iso => setData(d => ({ ...d, birthDate: iso }))}
                 borderRadius="8px 14px 4px 18px / 14px 8px 18px 4px"
               />
             </InputWrap>

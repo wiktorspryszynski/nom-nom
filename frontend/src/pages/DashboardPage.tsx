@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Utensils, Dumbbell, ChevronRight, Flame, Droplets, Beef,
-  Send, CalendarDays, Camera, Loader2, Trash2,
+  Send, CalendarDays, Camera, Loader2, Plus,
 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import PhotoLogSheet from '../components/PhotoLogSheet'
+import EntryFormSheet from '../components/EntryFormSheet'
+import { EntryRow } from '../components/EntryRow'
 import { useLanguage } from '../context/LanguageContext'
 import { tracker, type DailyData, type DailyEntry, ApiError } from '../lib/api'
 import {
@@ -228,35 +230,6 @@ function QuickLogWidget({
   )
 }
 
-function EntryRow({ entry, onDelete }: { entry: DailyEntry; onDelete?: (id: number) => void }) {
-  const isExercise = entry.type === 'exercise'
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-lily/10 last:border-0 group">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isExercise ? 'bg-[#3ec9a7]/15' : 'bg-primary/30'}`}>
-        {isExercise
-          ? <Dumbbell size={17} className="text-[#3ec9a7]" strokeWidth={2} />
-          : <Utensils size={17} className="text-lily" strokeWidth={2} />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-lily truncate">{entry.name}</p>
-        <p className="text-xs font-semibold text-lily/40">{entry.time}</p>
-      </div>
-      <span className={`text-sm font-extrabold shrink-0 ${entry.kcal < 0 ? 'text-[#3ec9a7]' : 'text-lily'}`}>
-        {entry.kcal > 0 ? '+' : ''}{entry.kcal} kcal
-      </span>
-      {onDelete && entry.type === 'food' && (
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-lily/30 hover:text-red-400 cursor-pointer shrink-0"
-          aria-label="Delete entry"
-        >
-          <Trash2 size={14} />
-        </button>
-      )}
-    </div>
-  )
-}
-
 function todayLabel(lang: string) {
   return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })
     .format(new Date()).replace(/^\w/, c => c.toUpperCase())
@@ -289,6 +262,8 @@ export default function DashboardPage() {
   const [sending, setSending] = useState(false)
   const [aiAvailable, setAiAvailable] = useState(true)
   const [sendError, setSendError] = useState('')
+  const [showEntryForm, setShowEntryForm] = useState(false)
+  const [editEntry, setEditEntry] = useState<DailyEntry | undefined>()
 
   const fetchDaily = useCallback(async () => {
     try {
@@ -380,6 +355,16 @@ export default function DashboardPage() {
   const handlePhotoSaved = () => {
     setPhotoFile(null)
     fetchDaily()
+  }
+
+  const handleEditEntry = (entry: DailyEntry) => {
+    setEditEntry(entry)
+    setShowEntryForm(true)
+  }
+
+  const handleAddEntry = () => {
+    setEditEntry(undefined)
+    setShowEntryForm(true)
   }
 
   const net = daily.kcal_consumed - daily.kcal_burned
@@ -483,13 +468,20 @@ export default function DashboardPage() {
                   <img src={NOMNOM_EXCERCISING} alt="" aria-hidden className="w-7 h-7 object-contain pointer-events-none select-none" />
                   <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
                 </div>
+                <button
+                  onClick={handleAddEntry}
+                  className="w-8 h-8 rounded-xl bg-lily/10 flex items-center justify-center text-lily/60 hover:bg-lily/20 transition-colors cursor-pointer"
+                  aria-label={t('dashboardAddEntry')}
+                >
+                  <Plus size={16} />
+                </button>
               </div>
               <div className="bg-white rounded-2xl shadow-md border-[2px] border-lily/15 px-4">
                 {daily.entries.length === 0 ? (
                   <p className="text-center text-sm font-semibold text-lily/30 py-6">{t('dashboardNoEntries')}</p>
                 ) : (
                   daily.entries.map(e => (
-                    <EntryRow key={`${e.type}-${e.id}`} entry={e} onDelete={handleDeleteEntry} />
+                    <EntryRow key={`${e.type}-${e.id}`} entry={e} onDelete={handleDeleteEntry} onEdit={handleEditEntry} />
                   ))
                 )}
               </div>
@@ -514,6 +506,14 @@ export default function DashboardPage() {
         file={photoFile}
         onClose={handlePhotoSaved}
       />
+
+      {showEntryForm && (
+        <EntryFormSheet
+          entry={editEntry}
+          onClose={() => setShowEntryForm(false)}
+          onSaved={() => { setShowEntryForm(false); fetchDaily() }}
+        />
+      )}
 
       <BottomNav />
     </div>

@@ -159,6 +159,8 @@ export const tracker = {
   },
   saveLog: (entry: { description: string; kcal: number; protein?: number; fat?: number; carbs?: number; source_type?: string; ai_confidence?: number; activity_type?: string; duration_min?: number; kcal_burned?: number }) =>
     api.post<{ id: number; ok: boolean }>('/api/tracker/log', entry),
+  updateLog: (id: number, entry: { description: string; kcal: number; protein?: number; fat?: number; carbs?: number }) =>
+    api.put<{ ok: boolean }>(`/api/tracker/log/${id}`, entry),
   deleteLog: (id: number) => api.delete<{ ok: boolean }>(`/api/tracker/log/${id}`),
   logWater: (glasses: number) => api.post<{ ok: boolean; glasses: number }>('/api/tracker/water', { glasses }),
   search: (q: string) => api.get<FoodSearchResult[]>(`/api/tracker/search?q=${encodeURIComponent(q)}`),

@@ -3,6 +3,7 @@ import { Target, LogOut, ChevronRight, Pencil, Check, Loader2, Zap } from 'lucid
 import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
+import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
 import { profile, type UserProfile } from '../lib/api'
 import { NOMNOM_HAPPY } from '../assets'
 
@@ -87,6 +88,7 @@ export default function ProfilePage() {
   const [weightGoal, setWeightGoal] = useState('')
   const [proteinGoal, setProteinGoal] = useState('')
   const [height, setHeight] = useState('')
+  const [showCalcModal, setShowCalcModal] = useState(false)
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -203,6 +205,15 @@ export default function ProfilePage() {
           </div>
           <GoalField label={t('profileHeight')} value={height} unit="cm" onChange={setHeight} onSave={saveProfile} />
           <GoalField label={t('profileTdee')} value={tdee} unit="kcal" onChange={setTdee} onSave={saveProfile} />
+          <div className="-mt-2 pb-1">
+            <button
+              type="button"
+              onClick={() => setShowCalcModal(true)}
+              className="text-xs font-bold text-lily/45 hover:text-lily/70 transition-colors cursor-pointer"
+            >
+              {t('signupCalcLink')}
+            </button>
+          </div>
           <GoalField
             label={t('profileCalorieTarget')}
             value={calorieTarget}
@@ -262,6 +273,32 @@ export default function ProfilePage() {
       </div>
 
       <BottomNav />
+
+      {showCalcModal && (
+        <CalorieCalculatorModal
+          sex={(user?.sex as 'M' | 'F' | null) ?? null}
+          height={String(user?.height_cm ?? '')}
+          weight={String(user?.weight_kg ?? '')}
+          birthDate={user?.birth_date ?? ''}
+          onConfirm={async kcal => {
+            setTdee(String(kcal))
+            setShowCalcModal(false)
+            setSaving(true)
+            try {
+              await profile.update({
+                tdee_kcal: kcal,
+                calorie_target: calorieTarget ? Number(calorieTarget) : undefined,
+                weight_target: weightGoal ? Number(weightGoal) : undefined,
+                protein_target: proteinGoal ? Number(proteinGoal) : undefined,
+                height_cm: height ? Number(height) : undefined,
+              })
+            } catch { /* silent */ } finally {
+              setSaving(false)
+            }
+          }}
+          onClose={() => setShowCalcModal(false)}
+        />
+      )}
     </div>
   )
 }

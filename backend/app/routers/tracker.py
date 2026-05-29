@@ -55,20 +55,31 @@ _VISION_PROMPT = (
     '{"error":"Nie rozpoznano jedzenia na zdjęciu"}'
 )
 
-_TEXT_PROMPT = (
-    "Analyze this food or exercise description. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
-    '{"name":"short Polish name (max 4 words)","description":"one Polish sentence",'
-    '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1,'
-    '"is_exercise":boolean}\n\n'
-    "For exercise entries set protein/fat/carbs to 0 and kcal to calories burned (positive number).\n"
-    "If you cannot parse this as food or exercise return:\n"
-    '{"error":"Nie rozpoznano posiłku ani aktywności"}'
-)
-
 _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
-# Typed as list[Any] so Pylance accepts cache_control (not in TextBlockParam TypedDict)
-_TEXT_SYSTEM: list[Any] = [{"type": "text", "text": _TEXT_PROMPT, "cache_control": {"type": "ephemeral"}}]
+
+def _build_text_system(language: str) -> list[Any]:
+    """Build a cached text-parsing system prompt for the given language."""
+    lang_note = "Polish" if language == "pl" else "English"
+    prompt = (
+        f"You are a nutrition assistant. The user's language is {lang_note}.\n"
+        "Analyze the food or exercise description and return ONLY a raw JSON object "
+        "(no markdown, no code fences) with these exact keys:\n"
+        '{"name":"short name in user\'s language (max 5 words)",'
+        '"description":"one sentence in user\'s language",'
+        '"kcal":integer,"protein":float,"fat":float,"carbs":float,'
+        '"confidence":float 0-1,"is_exercise":boolean}\n\n'
+        "Estimate for a single typical serving unless an explicit quantity is stated. "
+        "For Polish inputs use Central-European portion sizes.\n\n"
+        "Examples:\n"
+        'bułka z pastą jajeczną -> {"name":"bułka z pastą jajeczną","kcal":310,"protein":12,"fat":14,"carbs":32,"confidence":0.85,"is_exercise":false}\n'
+        '2 jajka sadzone -> {"name":"2 jajka sadzone","kcal":180,"protein":12,"fat":14,"carbs":1,"confidence":0.95,"is_exercise":false}\n'
+        'schabowy z ziemniakami -> {"name":"schabowy z ziemniakami","kcal":720,"protein":42,"fat":32,"carbs":58,"confidence":0.8,"is_exercise":false}\n'
+        '30 min bieganie -> {"name":"bieganie 30 min","kcal":280,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
+        "For exercise: set protein/fat/carbs to 0, kcal = calories burned (positive number).\n"
+        'If unparseable: {"error":"Nie rozpoznano posiłku ani aktywności"}'
+    )
+    return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
 
 
 # ---------------------------------------------------------------------------
@@ -114,14 +125,15 @@ def _today_start_utc() -> datetime:
     return datetime(today.year, today.month, today.day, tzinfo=timezone.utc).replace(tzinfo=None)
 
 
-def _call_claude_haiku(entry_text: str) -> dict:
-    """Call Claude Haiku with cached system prompt. Raises HTTPException 503 if credits exhausted."""
+def _call_claude_haiku(entry_text: str, language: str = "pl") -> dict:
+    """Call Claude Haiku with a language-aware cached system prompt."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    system = _build_text_system(language)
     try:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=256,
-            system=_TEXT_SYSTEM,
+            max_tokens=512,
+            system=system,
             messages=[{"role": "user", "content": entry_text}],
         )
     except anthropic.APIStatusError as e:
@@ -351,6 +363,26 @@ def save_log(
     return {"id": entry.id, "ok": True}
 
 
+@router.put("/log/{entry_id}")
+def update_log(
+    entry_id: int,
+    body: SaveLogRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update an existing food log entry."""
+    entry = db.query(FoodLog).filter(FoodLog.id == entry_id, FoodLog.user_id == current_user.id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry.description = body.description
+    entry.kcal = body.kcal
+    entry.protein = body.protein
+    entry.fat = body.fat
+    entry.carbs = body.carbs
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/log/{entry_id}")
 def delete_log(
     entry_id: int,
@@ -416,10 +448,13 @@ async def log_text(
 
     # AI path: quota guard + Haiku call
     _check_ai_quota(current_user, db)
-    result = _call_claude_haiku(body.text)
+    result = _call_claude_haiku(body.text, language=current_user.language or "pl")
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
+
+    if result.get("confidence", 1.0) < 0.45:
+        raise HTTPException(status_code=422, detail="Nie mogę rozpoznać posiłku. Podaj więcej szczegółów.")
 
     return result
 
