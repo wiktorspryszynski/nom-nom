@@ -201,6 +201,7 @@ export interface SavedItem {
 export const library = {
   list: () => api.get<SavedItem[]>('/api/library/'),
   create: (item: Omit<SavedItem, 'id'>) => api.post<SavedItem>('/api/library/', item),
+  update: (id: number, item: Omit<SavedItem, 'id'>) => api.put<SavedItem>(`/api/library/${id}`, item),
   delete: (id: number) => api.delete<{ ok: boolean }>(`/api/library/${id}`),
 }
 

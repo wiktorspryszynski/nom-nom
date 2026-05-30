@@ -7,12 +7,14 @@ type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
 
 export default function EntryFormSheet({
   entry,
+  savedItem,
   defaultMealType,
   context = 'dashboard',
   onClose,
   onSaved,
 }: {
   entry?: DailyEntry
+  savedItem?: SavedItem
   defaultMealType?: MealType
   context?: 'dashboard' | 'planner' | 'library'
   onClose: () => void
@@ -20,15 +22,26 @@ export default function EntryFormSheet({
 }) {
   const { t } = useLanguage()
   const isEdit = Boolean(entry)
+  const isLibraryEdit = Boolean(savedItem)
   const isLibraryContext = context === 'library'
 
-  const [type, setType] = useState<'food' | 'exercise'>(entry?.type ?? 'food')
+  const [type, setType] = useState<'food' | 'exercise'>(
+    savedItem?.item_type === 'exercise' ? 'exercise' : entry?.type ?? 'food'
+  )
   const [mealType, setMealType] = useState<MealType>(defaultMealType ?? 'other')
-  const [name, setName] = useState(entry?.name ?? '')
-  const [kcal, setKcal] = useState(entry ? String(Math.abs(entry.kcal)) : '')
-  const [protein, setProtein] = useState(entry?.protein != null ? String(entry.protein) : '')
-  const [fat, setFat] = useState(entry?.fat != null ? String(entry.fat) : '')
-  const [carbs, setCarbs] = useState(entry?.carbs != null ? String(entry.carbs) : '')
+  const [name, setName] = useState(savedItem?.name ?? entry?.name ?? '')
+  const [kcal, setKcal] = useState(
+    savedItem ? (savedItem.kcal != null ? String(savedItem.kcal) : '') : entry ? String(Math.abs(entry.kcal)) : ''
+  )
+  const [protein, setProtein] = useState(
+    savedItem?.protein != null ? String(savedItem.protein) : entry?.protein != null ? String(entry.protein) : ''
+  )
+  const [fat, setFat] = useState(
+    savedItem?.fat != null ? String(savedItem.fat) : entry?.fat != null ? String(entry.fat) : ''
+  )
+  const [carbs, setCarbs] = useState(
+    savedItem?.carbs != null ? String(savedItem.carbs) : entry?.carbs != null ? String(entry.carbs) : ''
+  )
   const [saveToLibrary, setSaveToLibrary] = useState(true)
   const [saving, setSaving] = useState(false)
   const [guessing, setGuessing] = useState(false)
@@ -65,6 +78,7 @@ export default function EntryFormSheet({
     if (item.protein != null) setProtein(String(item.protein))
     if (item.fat != null) setFat(String(item.fat))
     if (item.carbs != null) setCarbs(String(item.carbs))
+    setSaveToLibrary(false)
     setShowSuggestions(false)
   }
 
@@ -94,10 +108,19 @@ export default function EntryFormSheet({
   }
 
   const handleSave = async () => {
-    if (!name.trim() || (!kcal && !isLibraryContext)) return
+    if (!name.trim() || (!kcal && !isLibraryContext && !isLibraryEdit)) return
     setSaving(true)
     try {
-      if (isLibraryContext) {
+      if (isLibraryEdit && savedItem) {
+        await library.update(savedItem.id, {
+          name: name.trim(),
+          item_type: type,
+          kcal: kcal ? Number(kcal) : undefined,
+          protein: protein ? Number(protein) : undefined,
+          fat: fat ? Number(fat) : undefined,
+          carbs: carbs ? Number(carbs) : undefined,
+        })
+      } else if (isLibraryContext) {
         await library.create({
           name: name.trim(),
           item_type: type,
@@ -156,7 +179,7 @@ export default function EntryFormSheet({
 
   const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'other']
 
-  const canSave = isLibraryContext
+  const canSave = isLibraryContext || isLibraryEdit
     ? Boolean(name.trim())
     : Boolean(name.trim() && kcal)
 
@@ -167,12 +190,13 @@ export default function EntryFormSheet({
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-lg font-extrabold text-lily">
-          {isLibraryContext
-            ? t('plannerLibraryAdd')
+          {isLibraryEdit
+            ? t('entryFormEditTitle')
+            : isLibraryContext ? t('plannerLibraryAdd')
             : isEdit ? t('entryFormEditTitle') : t('dashboardAddEntry')}
         </h2>
 
-        {!isEdit && (
+        {!isEdit && !isLibraryEdit && (
           <div className="flex gap-2">
             <button
               type="button"
@@ -195,8 +219,8 @@ export default function EntryFormSheet({
           </div>
         )}
 
-        {/* Meal type selector — food only, not in edit mode */}
-        {!isEdit && type === 'food' && (
+        {/* Meal type selector — food only, not in edit/library mode */}
+        {!isEdit && !isLibraryEdit && !isLibraryContext && type === 'food' && (
           <div>
             <p className="text-xs font-bold text-lily/50 mb-1.5">{t('entryFormMealType')}</p>
             <div className="flex gap-1.5 flex-wrap">
@@ -226,9 +250,9 @@ export default function EntryFormSheet({
             onChange={e => handleNameChange(e.target.value)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
             placeholder={t('entryFormNamePlaceholder')}
-            className={`w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors ${!isLibraryContext && !isEdit ? 'pr-11' : ''}`}
+            className={`w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors ${!isLibraryContext && !isEdit && !isLibraryEdit ? 'pr-11' : ''}`}
           />
-          {!isLibraryContext && !isEdit && (
+          {!isLibraryContext && !isEdit && !isLibraryEdit && (
             <button
               type="button"
               onClick={() => setSaveToLibrary(v => !v)}

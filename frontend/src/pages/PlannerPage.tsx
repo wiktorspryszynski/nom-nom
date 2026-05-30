@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Dumbbell, Utensils } from 'lucide-react'
+import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Dumbbell, Utensils, Pencil } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import EntryFormSheet from '../components/EntryFormSheet'
 import { EntryRow } from '../components/EntryRow'
@@ -135,6 +135,7 @@ function LibraryTab() {
   const [items, setItems] = useState<SavedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editItem, setEditItem] = useState<SavedItem | undefined>()
 
   const fetchItems = useCallback(async () => {
     try {
@@ -165,7 +166,7 @@ function LibraryTab() {
   return (
     <div className="space-y-3">
       <button
-        onClick={() => setShowForm(true)}
+        onClick={() => { setEditItem(undefined); setShowForm(true) }}
         className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-extrabold border-[2px] border-lily/30 text-lily/60 hover:border-lily/50 hover:text-lily transition-colors cursor-pointer"
       >
         <Plus size={16} /> {t('plannerLibraryAdd')}
@@ -190,11 +191,18 @@ function LibraryTab() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {item.kcal != null && <span className="text-xs font-bold text-lily/50">{item.kcal} kcal</span>}
+              <div className="flex items-center gap-1 shrink-0">
+                {item.kcal != null && <span className="text-xs font-bold text-lily/50 mr-1">{item.kcal} kcal</span>}
+                <button
+                  onClick={() => { setEditItem(item); setShowForm(true) }}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-lily/25 hover:text-lily/60 active:text-lily/60 cursor-pointer"
+                  aria-label="Edit"
+                >
+                  <Pencil size={13} />
+                </button>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 flex items-center justify-center rounded-lg text-lily/30 hover:text-red-400 hover:bg-red-50 cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-lily/20 hover:text-red-400 active:text-red-400 hover:bg-red-50 cursor-pointer"
                   aria-label="Delete"
                 >
                   <Trash2 size={14} />
@@ -215,8 +223,9 @@ function LibraryTab() {
       {showForm && (
         <EntryFormSheet
           context="library"
-          onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchItems() }}
+          savedItem={editItem}
+          onClose={() => { setShowForm(false); setEditItem(undefined) }}
+          onSaved={() => { setShowForm(false); setEditItem(undefined); fetchItems() }}
         />
       )}
     </div>

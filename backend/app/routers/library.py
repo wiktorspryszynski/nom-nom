@@ -69,6 +69,30 @@ def create_saved_item(
     return _serialize(item)
 
 
+@router.put("/{item_id}")
+def update_saved_item(
+    item_id: int,
+    body: SavedItemCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    item = db.query(SavedItem).filter(
+        SavedItem.id == item_id, SavedItem.user_id == current_user.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    item.name = body.name
+    item.item_type = body.item_type
+    item.kcal = body.kcal
+    item.protein = body.protein
+    item.fat = body.fat
+    item.carbs = body.carbs
+    item.duration_min = body.duration_min
+    db.commit()
+    db.refresh(item)
+    return _serialize(item)
+
+
 @router.delete("/{item_id}")
 def delete_saved_item(
     item_id: int,

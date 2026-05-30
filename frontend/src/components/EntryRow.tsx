@@ -24,16 +24,16 @@ export function EntryRow({ entry, onDelete, onEdit }: {
       {onEdit && entry.type === 'food' && (
         <button
           onClick={() => onEdit(entry)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-lily/30 hover:text-lily/60 cursor-pointer shrink-0"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-lily/30 hover:text-lily/60 active:text-lily/60 cursor-pointer shrink-0"
           aria-label="Edit entry"
         >
           <Pencil size={13} />
         </button>
       )}
-      {onDelete && entry.type === 'food' && (
+      {onDelete && (
         <button
           onClick={() => onDelete(entry.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-lily/30 hover:text-red-400 cursor-pointer shrink-0"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-lily/20 hover:text-red-400 active:text-red-400 cursor-pointer shrink-0"
           aria-label="Delete entry"
         >
           <Trash2 size={14} />
