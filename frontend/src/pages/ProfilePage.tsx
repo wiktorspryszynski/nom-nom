@@ -235,7 +235,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => setShowCalcModal(true)}
-              className="flex-1 py-3 rounded-2xl border-[3px] border-lily text-sm font-extrabold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors"
+              className="flex-1 py-3 rounded-2xl border-[2px] border-lily text-sm font-bold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors"
             >
               {t('profileCalcCurrent')}
             </button>
@@ -243,7 +243,7 @@ export default function ProfilePage() {
               type="button"
               onClick={() => setShowTargetModal(true)}
               disabled={!tdee}
-              className="flex-1 py-3 rounded-2xl border-[3px] border-lily text-sm font-extrabold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default"
+              className="flex-1 py-3 rounded-2xl border-[2px] border-lily text-sm font-bold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default"
             >
               {t('profileCalcTarget')}
             </button>

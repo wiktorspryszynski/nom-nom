@@ -284,7 +284,7 @@ export default function SignUpPage() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
-  const [calorieTarget, setCalorieTarget] = useState<number | null>(null)
+  const [calorieTarget, setCalorieTarget] = useState('')
 
   // GitHub OAuth path
   const [githubId] = useState<string | null>(() => {
@@ -348,7 +348,7 @@ export default function SignUpPage() {
     setStatus('loading')
     setError('')
     const tdee = Number(data.currentIntake)
-    const target = calorieTarget ?? recommendation?.kcal ?? tdee
+    const target = calorieTarget ? Number(calorieTarget) : recommendation?.kcal ?? tdee
     try {
       const body: Record<string, unknown> = {
         name: data.name,
@@ -418,6 +418,11 @@ export default function SignUpPage() {
     const recommended = tdee - dailyDelta
     return { kcal: recommended, delta: dailyDelta }
   })()
+
+  const effectiveTarget = calorieTarget
+    ? Number(calorieTarget)
+    : recommendation?.kcal ?? (tdee || 0)
+  const tooLow = effectiveTarget > 0 && effectiveTarget < MIN_KCAL
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6 py-10">
@@ -718,34 +723,54 @@ export default function SignUpPage() {
                 <p className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">
                   {t('signupRecommendedIntakeLabel')}
                 </p>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-extrabold text-lily leading-none">
-                    {recommendation.kcal.toLocaleString()}
-                  </span>
-                  <span className="text-sm font-bold text-lily/50 pb-0.5">kcal</span>
-                  <span className="text-xs font-bold text-lily/40 pb-0.5 ml-1">
-                    {recommendation.delta > 0
-                      ? t('signupDeficitNote').replace('{kcal}', String(Math.abs(recommendation.delta)))
-                      : t('signupSurplusNote').replace('{kcal}', String(Math.abs(recommendation.delta)))}
-                  </span>
-                </div>
-                {recommendation.kcal < MIN_KCAL && (
-                  <p className="text-xs font-bold text-[#f7a84a]">{t('signupWarningTooLow')}</p>
-                )}
-                {calorieTarget !== recommendation.kcal && (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-extrabold text-lily leading-none">
+                      {recommendation.kcal.toLocaleString()}
+                    </span>
+                    <span className="text-sm font-bold text-lily/50 pb-0.5">kcal</span>
+                    <span className="text-xs font-bold text-lily/40 pb-0.5 ml-1">
+                      {recommendation.delta > 0
+                        ? t('signupDeficitNote').replace('{kcal}', String(Math.abs(recommendation.delta)))
+                        : t('signupSurplusNote').replace('{kcal}', String(Math.abs(recommendation.delta)))}
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setCalorieTarget(recommendation.kcal)}
-                    className="self-start text-xs font-bold text-lily/60 hover:text-lily transition-colors cursor-pointer underline underline-offset-2"
+                    onClick={() => setCalorieTarget(String(recommendation.kcal))}
+                    className="text-xs font-bold text-lily/60 hover:text-lily transition-colors cursor-pointer underline underline-offset-2 shrink-0"
                   >
                     {t('signupAcceptRecommendation')}
                   </button>
-                )}
-                {calorieTarget === recommendation.kcal && (
-                  <p className="text-xs font-bold text-[#3ec9a7]">✓ {t('signupAcceptRecommendation')}</p>
+                </div>
+                {recommendation.kcal < MIN_KCAL && (
+                  <p className="text-xs font-bold text-red-400">{t('signupWarningTooLow')}</p>
                 )}
               </div>
             )}
+
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-bold text-lily/50">{t('signupCustomTargetLabel')}</p>
+              <InputWrap
+                r1="6px 16px 4px 18px / 16px 6px 18px 4px"
+                r2="8px 12px 6px 14px / 12px 8px 14px 6px"
+                r3="4px 18px 10px 8px / 18px 4px 8px 10px"
+                borderColor="var(--color-ivory)"
+              >
+                <UnitInput
+                  placeholder={t('signupCustomTargetPlaceholder')}
+                  value={calorieTarget}
+                  onChange={e => setCalorieTarget(e.target.value)}
+                  min={1}
+                  max={10000}
+                  unit="kcal"
+                  borderRadius="6px 16px 4px 18px / 16px 6px 18px 4px"
+                />
+              </InputWrap>
+              {tooLow && (
+                <p className="text-xs font-bold text-red-400">{t('signupWarningTooLow')}</p>
+              )}
+            </div>
 
             {error && (
               <p className="text-center text-sm font-bold text-lily/80">{error}</p>
@@ -761,7 +786,7 @@ export default function SignUpPage() {
               </button>
               <button
                 type="submit"
-                disabled={status === 'loading'}
+                disabled={status === 'loading' || tooLow}
                 className="btn-fill flex-1 border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
               >
                 {status === 'loading' ? t('signupCreating') : t('signupCreate')}
