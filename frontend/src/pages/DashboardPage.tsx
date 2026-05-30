@@ -432,9 +432,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ── Water ── */}
-            <WaterWidget glasses={daily.water_glasses} goal={daily.water_goal} onSave={handleWater} />
-
             {/* ── Quick log — full width ── */}
             <div className="sm:col-span-2 space-y-2">
               <QuickLogWidget
@@ -447,6 +444,9 @@ export default function DashboardPage() {
                 <p className="text-xs font-bold text-orange-500 text-center">{sendError}</p>
               )}
             </div>
+            
+            {/* ── Water ── */}
+            <WaterWidget glasses={daily.water_glasses} goal={daily.water_goal} onSave={handleWater} />
 
             {/* ── Today's plan stub ── */}
             <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
