@@ -8,7 +8,7 @@ import PhotoLogSheet from '../components/PhotoLogSheet'
 import EntryFormSheet from '../components/EntryFormSheet'
 import { EntryRow } from '../components/EntryRow'
 import { useLanguage } from '../context/LanguageContext'
-import { tracker, type DailyData, type DailyEntry, ApiError } from '../lib/api'
+import { tracker, mealPlanner, type DailyData, type DailyEntry, type MealPlan, type MealPlanItem, ApiError } from '../lib/api'
 import {
   NOMNOM_SMILING, NOMNOM_HAPPY, NOMNOM_SLIGHT_SMILE,
   NOMNOM_BEHIND, NOMNOM_BEHIND_QUESTION,
@@ -235,6 +235,25 @@ function todayLabel(lang: string) {
     .format(new Date()).replace(/^\w/, c => c.toUpperCase())
 }
 
+function parseDateOnly(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function getTodayPlanItems(plans: MealPlan[]): MealPlanItem[] {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (const plan of plans) {
+    const start = parseDateOnly(plan.start_date)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + plan.days_count - 1)
+    if (today < start || today > end) continue
+    const dayNumber = Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1
+    return plan.items.filter(i => i.day_number === dayNumber)
+  }
+  return []
+}
+
 const EMPTY_DAILY: DailyData = {
   kcal_consumed: 0,
   kcal_burned: 0,
@@ -258,6 +277,7 @@ export default function DashboardPage() {
   const nomTimers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const [daily, setDaily] = useState<DailyData>(EMPTY_DAILY)
+  const [todayPlanItems, setTodayPlanItems] = useState<MealPlanItem[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [aiAvailable, setAiAvailable] = useState(true)
@@ -267,8 +287,9 @@ export default function DashboardPage() {
 
   const fetchDaily = useCallback(async () => {
     try {
-      const data = await tracker.getDaily()
+      const [data, plans] = await Promise.all([tracker.getDaily(), mealPlanner.list()])
       setDaily(data)
+      setTodayPlanItems(getTodayPlanItems(plans))
     } catch {
       // keep empty state
     } finally {
@@ -459,9 +480,23 @@ export default function DashboardPage() {
                   {t('dashboardPlannerLink')} <ChevronRight size={12} />
                 </a>
               </div>
-              <a href="/planner" className="block text-sm font-semibold text-lily/40 hover:text-lily/70 transition-colors text-center py-3">
-                {t('dashboardPlannerLink')} →
-              </a>
+              {todayPlanItems.length === 0 ? (
+                <p className="text-sm font-semibold text-lily/40 text-center py-3">{t('dashboardNoPlanToday')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {todayPlanItems.map(item => (
+                    <div key={item.id} className="rounded-xl bg-lily/5 px-3 py-2">
+                      <p className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{item.meal_name}</p>
+                      {item.description && (
+                        <p className="text-sm font-semibold text-lily/70 leading-snug">{item.description}</p>
+                      )}
+                      {item.kcal != null && (
+                        <p className="text-xs font-bold text-lily/40 mt-0.5">{item.kcal} kcal</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── Log entries ── */}
