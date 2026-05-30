@@ -141,12 +141,12 @@ def _today_start_utc() -> datetime:
 
 
 def _call_claude_haiku(entry_text: str, language: str = "pl") -> dict:
-    """Call Claude Haiku with a language-aware cached system prompt."""
+    """Call Claude Sonnet with a language-aware cached system prompt."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     system = _build_text_system(language)
     try:
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=512,
             system=system,
             messages=[{"role": "user", "content": entry_text}],
@@ -193,9 +193,16 @@ async def _try_usda_first(text: str) -> dict | None:
     """Return nutrition dict if USDA finds a confident match for a short query, else None."""
     if not settings.usda_api_key:
         return None
+    # Skip non-ASCII queries — USDA is an English database; Polish/accented text returns garbage
+    if not text.isascii():
+        return None
     # Only attempt for short queries (≤4 words) — likely raw/simple foods
     words = text.strip().split()
     if len(words) > 4:
+        return None
+    # Only match against words of ≥3 chars to avoid short words ("a", "z", "w") false-matching
+    meaningful_words = [w for w in words if len(w) >= 3]
+    if not meaningful_words:
         return None
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -216,7 +223,7 @@ async def _try_usda_first(text: str) -> dict | None:
         top = foods[0]
         # Confidence check: at least one query word appears in the result name
         description = top.get("description", "").lower()
-        if not any(w.lower() in description for w in words):
+        if not any(w.lower() in description for w in meaningful_words):
             return None
         nutrients = {n["nutrientName"]: n["value"] for n in top.get("foodNutrients", [])}
         return {
