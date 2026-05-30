@@ -112,6 +112,7 @@ const pl = {
   dashboardAiUnavailableTitle: 'AI niedostępne — wpisz ręcznie',
   dashboardAiUnavailableError: 'AI niedostępne — spróbuj wpisać ręcznie',
   dashboardAiQuotaError: 'Dzienny limit AI wyczerpany — spróbuj jutro',
+  dashboardAiParseError: 'Błąd odpowiedzi AI — spróbuj ponownie.',
   dashboardParseError: 'Nie udało się przetworzyć wpisu. Spróbuj być bardziej szczegółowy.',
 
   // ── Planner ────────────────────────────────────────────────────────────────
@@ -386,6 +387,7 @@ const en: Translations = {
   dashboardAiUnavailableTitle: 'AI unavailable — use text entry',
   dashboardAiUnavailableError: 'AI unavailable — try entering manually',
   dashboardAiQuotaError: 'Daily AI limit reached — try again tomorrow',
+  dashboardAiParseError: 'AI response error — please try again.',
   dashboardParseError: 'Could not parse entry. Try being more specific.',
 
   // ── Planner ────────────────────────────────────────────────────────────────

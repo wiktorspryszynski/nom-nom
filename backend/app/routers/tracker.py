@@ -157,9 +157,16 @@ def _call_claude_text(entry_text: str, language: str = "pl", model: str = "claud
         raise
     try:
         block = message.content[0]
-        return json.loads(block.text)  # type: ignore[union-attr]
+        text = block.text.strip()  # type: ignore[union-attr]
+        # Strip markdown code fences the model sometimes adds despite instructions
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+        return json.loads(text)
     except (json.JSONDecodeError, IndexError, AttributeError):
-        raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
+        raise HTTPException(status_code=422, detail="AI_PARSE_ERROR")
 
 
 def _call_claude_vision(b64: str, media_type: str, language: str = "pl", model: str = "claude-sonnet-4-6") -> dict:
@@ -184,9 +191,15 @@ def _call_claude_vision(b64: str, media_type: str, language: str = "pl", model: 
         raise
     try:
         block = message.content[0]
-        return json.loads(block.text)  # type: ignore[union-attr]
+        text = block.text.strip()  # type: ignore[union-attr]
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+        return json.loads(text)
     except (json.JSONDecodeError, IndexError, AttributeError):
-        raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
+        raise HTTPException(status_code=422, detail="AI_PARSE_ERROR")
 
 
 async def _try_usda_first(text: str) -> dict | None:

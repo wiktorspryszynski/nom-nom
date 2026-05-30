@@ -330,6 +330,8 @@ export default function DashboardPage() {
         setSendError(t('dashboardAiUnavailableError'))
       } else if (err instanceof ApiError && (err.detail === 'AI_QUOTA_EXCEEDED' || err.status === 429)) {
         setSendError(t('dashboardAiQuotaError'))
+      } else if (err instanceof ApiError && err.detail === 'AI_PARSE_ERROR') {
+        setSendError(t('dashboardAiParseError'))
       } else {
         setSendError(t('dashboardParseError'))
       }
