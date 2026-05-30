@@ -168,7 +168,7 @@ function QuickLogWidget({
         <img src={NOMNOM_EXCERCISE_AND_SNACK} alt="" aria-hidden className="w-8 h-8 object-contain pointer-events-none select-none" />
         <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('dashboardQuickLog')}</h2>
         {!aiAvailable && (
-          <span className="ml-auto text-[10px] font-bold text-orange-500 bg-orange-50 rounded-lg px-2 py-0.5">AI offline</span>
+          <span className="ml-auto text-[10px] font-bold text-orange-500 bg-orange-50 rounded-lg px-2 py-0.5">{t('dashboardAiOffline')}</span>
         )}
       </div>
       <div className="flex gap-2">
@@ -203,7 +203,7 @@ function QuickLogWidget({
         <button
           onClick={mode === 'food' ? onCamera : undefined}
           disabled={mode === 'exercise' || !aiAvailable}
-          title={!aiAvailable ? 'AI unavailable — use text entry' : undefined}
+          title={!aiAvailable ? t('dashboardAiUnavailableTitle') : undefined}
           className={`w-11 h-11 bg-white border-[2px] rounded-xl flex items-center justify-center shrink-0 transition-all ${
             mode === 'exercise' || !aiAvailable
               ? 'border-lily/10 opacity-30 cursor-not-allowed'
@@ -327,11 +327,11 @@ export default function DashboardPage() {
     } catch (err) {
       if (err instanceof ApiError && (err.detail === 'AI_UNAVAILABLE' || err.status === 503)) {
         setAiAvailable(false)
-        setSendError('AI unavailable — try USDA search or enter manually')
+        setSendError(t('dashboardAiUnavailableError'))
       } else if (err instanceof ApiError && (err.detail === 'AI_QUOTA_EXCEEDED' || err.status === 429)) {
-        setSendError('Daily AI limit reached — try again tomorrow')
+        setSendError(t('dashboardAiQuotaError'))
       } else {
-        setSendError('Could not parse entry. Try being more specific.')
+        setSendError(t('dashboardParseError'))
       }
     } finally {
       setSending(false)

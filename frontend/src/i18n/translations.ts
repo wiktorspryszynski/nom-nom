@@ -108,6 +108,11 @@ const pl = {
   dashboardTodayEntries: 'Dzisiejsze wpisy',
   dashboardAllEntries: 'Wszystkie',
   dashboardNoEntries: 'Brak wpisów na dziś — dodaj posiłek lub ćwiczenie!',
+  dashboardAiOffline: 'AI offline',
+  dashboardAiUnavailableTitle: 'AI niedostępne — wpisz ręcznie',
+  dashboardAiUnavailableError: 'AI niedostępne — spróbuj wpisać ręcznie',
+  dashboardAiQuotaError: 'Dzienny limit AI wyczerpany — spróbuj jutro',
+  dashboardParseError: 'Nie udało się przetworzyć wpisu. Spróbuj być bardziej szczegółowy.',
 
   // ── Planner ────────────────────────────────────────────────────────────────
   plannerTitle: 'Jadłospis',
@@ -376,6 +381,11 @@ const en: Translations = {
   dashboardTodayEntries: "Today's entries",
   dashboardAllEntries: 'All',
   dashboardNoEntries: 'No entries yet — log a meal or exercise!',
+  dashboardAiOffline: 'AI offline',
+  dashboardAiUnavailableTitle: 'AI unavailable — use text entry',
+  dashboardAiUnavailableError: 'AI unavailable — try entering manually',
+  dashboardAiQuotaError: 'Daily AI limit reached — try again tomorrow',
+  dashboardParseError: 'Could not parse entry. Try being more specific.',
 
   // ── Planner ────────────────────────────────────────────────────────────────
   plannerTitle: 'Meal planner',
