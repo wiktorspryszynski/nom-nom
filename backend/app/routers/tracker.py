@@ -140,13 +140,13 @@ def _today_start_utc() -> datetime:
     return datetime(today.year, today.month, today.day, tzinfo=timezone.utc).replace(tzinfo=None)
 
 
-def _call_claude_haiku(entry_text: str, language: str = "pl") -> dict:
-    """Call Claude Haiku with a language-aware cached system prompt."""
+def _call_claude_text(entry_text: str, language: str = "pl", model: str = "claude-haiku-4-5-20251001") -> dict:
+    """Parse a food/exercise description using a Claude text model."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     system = _build_text_system(language)
     try:
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=model,
             max_tokens=512,
             system=system,
             messages=[{"role": "user", "content": entry_text}],
@@ -162,8 +162,8 @@ def _call_claude_haiku(entry_text: str, language: str = "pl") -> dict:
         raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
 
 
-def _call_claude_sonnet_vision(b64: str, media_type: str, language: str = "pl") -> dict:
-    """Call Claude Sonnet Vision with a language-aware cached prompt. Raises HTTPException 503 if credits exhausted."""
+def _call_claude_vision(b64: str, media_type: str, language: str = "pl", model: str = "claude-sonnet-4-6") -> dict:
+    """Analyze a food photo using a Claude vision model."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     vision_messages: list[Any] = [{
         "role": "user",
@@ -174,7 +174,7 @@ def _call_claude_sonnet_vision(b64: str, media_type: str, language: str = "pl") 
     }]
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=model,
             max_tokens=512,
             messages=vision_messages,
         )
@@ -485,7 +485,7 @@ async def log_text(
 
     # AI path: quota guard + Haiku call
     _check_ai_quota(current_user, db)
-    result = _call_claude_haiku(body.text, language=current_user.language or "pl")
+    result = _call_claude_text(body.text, language=current_user.language or "pl")
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
@@ -519,7 +519,7 @@ async def log_photo(
         media_type = "image/jpeg"
 
     b64 = base64.standard_b64encode(contents).decode()
-    result = _call_claude_sonnet_vision(b64, media_type, language=current_user.language or "pl")
+    result = _call_claude_vision(b64, media_type, language=current_user.language or "pl")
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
