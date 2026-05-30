@@ -99,7 +99,7 @@ export default function CalorieTargetModal({
               {/* Result */}
               <div
                 className="flex flex-col items-center gap-1 transition-opacity duration-300"
-                style={{ opacity: target ? 1 : 0.25 }}
+                style={{ opacity: target !== null ? 1 : 0.25 }}
               >
                 <p className="text-lily/60 text-sm font-semibold">{t('targetResult')}</p>
                 <p className="text-6xl font-extrabold text-lily tabular-nums">
@@ -111,8 +111,8 @@ export default function CalorieTargetModal({
               {/* Confirm */}
               <button
                 type="button"
-                disabled={!target}
-                onClick={() => target && onConfirm(target)}
+                disabled={target === null}
+                onClick={() => target !== null && onConfirm(target)}
                 className="btn-fill w-full border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-30 disabled:cursor-default"
               >
                 {t('calcConfirm')}

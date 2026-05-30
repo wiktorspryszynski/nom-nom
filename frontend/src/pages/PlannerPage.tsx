@@ -314,6 +314,7 @@ export default function PlannerPage() {
   const [showEntryForm, setShowEntryForm] = useState(false)
   const [editEntry, setEditEntry] = useState<DailyEntry | undefined>()
   const [pendingMealType, setPendingMealType] = useState<MealType>('other')
+  const [addingToPlan, setAddingToPlan] = useState(false)
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -387,9 +388,17 @@ export default function PlannerPage() {
     } catch { /* silent */ }
   }
 
+  const openPlanAddForm = (mealType: MealType) => {
+    setEditEntry(undefined)
+    setPendingMealType(mealType)
+    setAddingToPlan(true)
+    setShowEntryForm(true)
+  }
+
   const openAddForm = (mealType: MealType) => {
     setEditEntry(undefined)
     setPendingMealType(mealType)
+    setAddingToPlan(false)
     setShowEntryForm(true)
   }
 
@@ -468,7 +477,7 @@ export default function PlannerPage() {
           <DayView
             dayIndex={selectedDay}
             items={currentItems}
-            onAdd={openAddForm}
+            onAdd={openPlanAddForm}
             onItemDeleted={handlePlanItemDeleted}
           />
         ) : (
@@ -513,8 +522,14 @@ export default function PlannerPage() {
           entry={editEntry}
           defaultMealType={pendingMealType}
           context="planner"
+          planId={addingToPlan ? activePlan?.id : undefined}
+          dayNumber={addingToPlan ? selectedDay + 1 : undefined}
           onClose={() => setShowEntryForm(false)}
-          onSaved={() => { setShowEntryForm(false); fetchDaily() }}
+          onSaved={() => {
+            setShowEntryForm(false)
+            if (addingToPlan) fetchPlans()
+            else fetchDaily()
+          }}
         />
       )}
 

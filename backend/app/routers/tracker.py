@@ -47,20 +47,38 @@ class SaveLogRequest(BaseModel):
 # Prompts (static — perfect candidates for prompt caching)
 # ---------------------------------------------------------------------------
 
-_VISION_PROMPT = (
-    "Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
-    '{"name":"short Polish name (max 4 words)","description":"one Polish sentence describing the dish",'
-    '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
-    "Estimate a realistic single serving. If this is not a food photo return:\n"
-    '{"error":"Nie rozpoznano jedzenia na zdjęciu"}'
-)
+def _build_vision_prompt(language: str) -> str:
+    name_lang = "Polish" if language == "pl" else "English"
+    return (
+        f"Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
+        f'{{"name":"short {name_lang} name (max 4 words)","description":"one {name_lang} sentence describing the dish",'
+        '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
+        "Estimate a realistic single serving. If this is not a food photo return:\n"
+        '{"error":"Nie rozpoznano jedzenia na zdjęciu"}'
+    )
 
 _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 def _build_text_system(language: str) -> list[Any]:
     """Build a cached text-parsing system prompt for the given language."""
-    lang_note = "Polish" if language == "pl" else "English"
+    is_polish = language == "pl"
+    lang_note = "Polish" if is_polish else "English"
+    
+    polish_examples = """
+        'bułka z pastą jajeczną -> {"name":"bułka z pastą jajeczną","kcal":310,"protein":12,"fat":14,"carbs":32,"confidence":0.85,"is_exercise":false}\n'
+        '2 jajka sadzone -> {"name":"2 jajka sadzone","kcal":180,"protein":12,"fat":14,"carbs":1,"confidence":0.95,"is_exercise":false}\n'
+        'schabowy z ziemniakami -> {"name":"schabowy z ziemniakami","kcal":720,"protein":42,"fat":32,"carbs":58,"confidence":0.8,"is_exercise":false}\n'
+        '30 min bieganie -> {"name":"bieganie 30 min","kcal":280,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
+        """
+        
+    english_examples = """
+        'egg salad sandwich -> {"name":"egg salad sandwich","kcal":350,"protein":14,"fat":18,"carbs":30,"confidence":0.85,"is_exercise":false}\n'
+        'grilled chicken breast -> {"name":"grilled chicken breast","kcal":165,"protein":31,"fat":4,"carbs":0,"confidence":0.9,"is_exercise":false}\n'
+        'spaghetti with marinara -> {"name":"spaghetti with marinara","kcal":400,"protein":12,"fat":10,"carbs":60,"confidence":0.8,"is_exercise":false}\n'
+        '30 min running -> {"name":"running 30 min","kcal":300,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
+        """
+    
     prompt = (
         f"You are a nutrition assistant. The user's language is {lang_note}.\n"
         "Analyze the food or exercise description and return ONLY a raw JSON object "
@@ -72,10 +90,7 @@ def _build_text_system(language: str) -> list[Any]:
         "Estimate for a single typical serving unless an explicit quantity is stated. "
         "For Polish inputs use Central-European portion sizes.\n\n"
         "Examples:\n"
-        'bułka z pastą jajeczną -> {"name":"bułka z pastą jajeczną","kcal":310,"protein":12,"fat":14,"carbs":32,"confidence":0.85,"is_exercise":false}\n'
-        '2 jajka sadzone -> {"name":"2 jajka sadzone","kcal":180,"protein":12,"fat":14,"carbs":1,"confidence":0.95,"is_exercise":false}\n'
-        'schabowy z ziemniakami -> {"name":"schabowy z ziemniakami","kcal":720,"protein":42,"fat":32,"carbs":58,"confidence":0.8,"is_exercise":false}\n'
-        '30 min bieganie -> {"name":"bieganie 30 min","kcal":280,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
+        + (polish_examples if is_polish else english_examples) +
         "For exercise: set protein/fat/carbs to 0, kcal = calories burned (positive number).\n"
         'If unparseable: {"error":"Nie rozpoznano posiłku ani aktywności"}'
     )
@@ -147,13 +162,13 @@ def _call_claude_haiku(entry_text: str, language: str = "pl") -> dict:
         raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
 
 
-def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
-    """Call Claude Sonnet Vision with cached text prompt. Raises HTTPException 503 if credits exhausted."""
+def _call_claude_sonnet_vision(b64: str, media_type: str, language: str = "pl") -> dict:
+    """Call Claude Sonnet Vision with a language-aware cached prompt. Raises HTTPException 503 if credits exhausted."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     vision_messages: list[Any] = [{
         "role": "user",
         "content": [
-            {"type": "text", "text": _VISION_PROMPT, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": _build_vision_prompt(language), "cache_control": {"type": "ephemeral"}},
             {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
         ],
     }]
@@ -469,7 +484,7 @@ async def log_text(
         raise HTTPException(status_code=422, detail=result["error"])
 
     if result.get("confidence", 1.0) < 0.45:
-        raise HTTPException(status_code=422, detail="Nie mogę rozpoznać posiłku. Podaj więcej szczegółów.")
+        raise HTTPException(status_code=422, detail="CONFIDENCE_TOO_LOW")
 
     return result
 
@@ -497,7 +512,7 @@ async def log_photo(
         media_type = "image/jpeg"
 
     b64 = base64.standard_b64encode(contents).decode()
-    result = _call_claude_sonnet_vision(b64, media_type)
+    result = _call_claude_sonnet_vision(b64, media_type, language=current_user.language or "pl")
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bookmark, Dumbbell, Loader2, Sparkles, Utensils } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
-import { library, tracker, type DailyEntry, type SavedItem } from '../lib/api'
+import { library, mealPlanner, tracker, type DailyEntry, type SavedItem } from '../lib/api'
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
 
@@ -10,6 +10,8 @@ export default function EntryFormSheet({
   savedItem,
   defaultMealType,
   context = 'dashboard',
+  planId,
+  dayNumber,
   onClose,
   onSaved,
 }: {
@@ -17,6 +19,8 @@ export default function EntryFormSheet({
   savedItem?: SavedItem
   defaultMealType?: MealType
   context?: 'dashboard' | 'planner' | 'library'
+  planId?: number
+  dayNumber?: number
   onClose: () => void
   onSaved: () => void
 }) {
@@ -45,6 +49,7 @@ export default function EntryFormSheet({
   const [saveToLibrary, setSaveToLibrary] = useState(true)
   const [saving, setSaving] = useState(false)
   const [guessing, setGuessing] = useState(false)
+  const [guessError, setGuessError] = useState('')
 
   // Library search
   const [libraryItems, setLibraryItems] = useState<SavedItem[]>([])
@@ -60,6 +65,7 @@ export default function EntryFormSheet({
 
   const handleNameChange = (val: string) => {
     setName(val)
+    if (guessError) setGuessError('')
     if (val.length >= 2) {
       const q = val.toLowerCase()
       const matches = libraryItems.filter(i =>
@@ -85,13 +91,16 @@ export default function EntryFormSheet({
   const handleAiGuess = async () => {
     if (!name.trim()) return
     setGuessing(true)
+    setGuessError('')
     try {
       const parsed = await tracker.logText(name.trim())
       setKcal(String(parsed.kcal))
       if (parsed.protein != null) setProtein(String(parsed.protein))
       if (parsed.fat != null) setFat(String(parsed.fat))
       if (parsed.carbs != null) setCarbs(String(parsed.carbs))
-    } catch { /* silent */ } finally {
+    } catch {
+      setGuessError(t('entryFormAiGuessError'))
+    } finally {
       setGuessing(false)
     }
   }
@@ -119,6 +128,7 @@ export default function EntryFormSheet({
           protein: protein ? Number(protein) : undefined,
           fat: fat ? Number(fat) : undefined,
           carbs: carbs ? Number(carbs) : undefined,
+          duration_min: savedItem.duration_min,
         })
       } else if (isLibraryContext) {
         await library.create({
@@ -136,6 +146,16 @@ export default function EntryFormSheet({
           protein: protein ? Number(protein) : 0,
           fat: fat ? Number(fat) : 0,
           carbs: carbs ? Number(carbs) : 0,
+        })
+      } else if (context === 'planner' && planId != null && dayNumber != null) {
+        await mealPlanner.addItem(planId, {
+          day_number: dayNumber,
+          meal_name: mealTypeLabel(mealType),
+          description: name.trim(),
+          kcal: kcal ? Number(kcal) : undefined,
+          protein: protein ? Number(protein) : undefined,
+          fat: fat ? Number(fat) : undefined,
+          carbs: carbs ? Number(carbs) : undefined,
         })
       } else if (type === 'exercise') {
         await tracker.saveLog({
@@ -308,6 +328,10 @@ export default function EntryFormSheet({
               : <Sparkles size={15} />}
           </button>
         </div>
+
+        {guessError && (
+          <p className="text-xs font-bold text-orange-500 -mt-2">{guessError}</p>
+        )}
 
         {type === 'food' && (
           <div className="grid grid-cols-3 gap-2">
