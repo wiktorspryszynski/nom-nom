@@ -141,12 +141,12 @@ def _today_start_utc() -> datetime:
 
 
 def _call_claude_haiku(entry_text: str, language: str = "pl") -> dict:
-    """Call Claude Sonnet with a language-aware cached system prompt."""
+    """Call Claude Haiku with a language-aware cached system prompt."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     system = _build_text_system(language)
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-haiku-4-5-20251001",
             max_tokens=512,
             system=system,
             messages=[{"role": "user", "content": entry_text}],
