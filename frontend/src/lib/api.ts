@@ -180,6 +180,8 @@ export const profile = {
 
 export const mealPlanner = {
   list: () => api.get<MealPlan[]>('/api/meal-planner/plans'),
+  createPlan: (params?: { start_date?: string; days_count?: number }) =>
+    api.post<MealPlan>('/api/meal-planner/plans', params ?? {}),
   generate: (params: { days?: number; meals_per_day?: number; preferences?: string; start_date?: string }) =>
     api.post<MealPlan>('/api/meal-planner/generate', params),
   deleteItem: (itemId: number) => api.delete<{ ok: boolean }>(`/api/meal-planner/items/${itemId}`),

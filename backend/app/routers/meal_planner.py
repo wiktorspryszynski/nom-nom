@@ -63,6 +63,35 @@ class GenerateRequest(BaseModel):
     start_date: date | None = None
 
 
+class CreatePlanRequest(BaseModel):
+    start_date: date | None = None
+    days_count: int = 7
+
+
+@router.post("/plans")
+def create_plan(
+    body: CreatePlanRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    start = body.start_date or date.today()
+    plan = MealPlan(
+        user_id=current_user.id,
+        start_date=start,
+        days_count=body.days_count,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return {
+        "id": plan.id,
+        "start_date": plan.start_date.isoformat(),
+        "days_count": plan.days_count,
+        "created_at": plan.created_at.isoformat(),
+        "items": [],
+    }
+
+
 @router.get("/plans")
 def list_plans(
     db: Session = Depends(get_db),

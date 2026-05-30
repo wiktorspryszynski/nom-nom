@@ -10,8 +10,65 @@ import { NOMNOM_EATING_RAMEN } from '../assets'
 type Tab = 'plan' | 'saved'
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
 
+function parseDateOnly(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function formatDateOnly(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getWeekStart(value: Date) {
+  const start = new Date(value)
+  const day = start.getDay()
+  const offset = day === 0 ? -6 : 1 - day
+  start.setDate(start.getDate() + offset)
+  start.setHours(0, 0, 0, 0)
+  return start
+}
+
 // Maps slot index in MEALS array → MealType value passed to EntryFormSheet
 const SLOT_MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+
+const MEAL_NAME_ALIASES: Record<MealType, string[]> = {
+  breakfast: ['breakfast', 'śniadanie', 'drugie śniadanie'],
+  lunch: ['lunch', 'obiad'],
+  dinner: ['dinner', 'kolacja'],
+  snack: ['snack', 'przekąska', 'przekaska'],
+  other: ['other', 'inne'],
+}
+
+function mealNameMatchesSlot(mealName: string, slotType: MealType): boolean {
+  const normalized = mealName.toLowerCase().trim()
+  return MEAL_NAME_ALIASES[slotType].some(alias => normalized.includes(alias))
+}
+
+function getSlotCalendarDate(selectedDayIndex: number, referenceDate: Date) {
+  const weekStart = getWeekStart(referenceDate)
+  const slotDate = new Date(weekStart)
+  slotDate.setDate(weekStart.getDate() + selectedDayIndex)
+  slotDate.setHours(0, 0, 0, 0)
+  return slotDate
+}
+
+function getPlanDayNumber(plan: MealPlan, selectedDayIndex: number): number | null {
+  const planStart = parseDateOnly(plan.start_date)
+  planStart.setHours(0, 0, 0, 0)
+  const planEnd = new Date(planStart)
+  planEnd.setDate(planStart.getDate() + plan.days_count - 1)
+  const slotDate = getSlotCalendarDate(selectedDayIndex, planStart)
+  if (slotDate < planStart || slotDate > planEnd) return null
+  return Math.round((slotDate.getTime() - planStart.getTime()) / 86_400_000) + 1
+}
+
+function getItemsForSelectedDay(plan: MealPlan, selectedDayIndex: number): MealPlanItem[] {
+  const dayNumber = getPlanDayNumber(plan, selectedDayIndex)
+  if (dayNumber == null) return []
+  return plan.items.filter(i => i.day_number === dayNumber)
+}
 
 function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
   const { ta } = useLanguage()
@@ -41,21 +98,26 @@ function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: n
 }
 
 function DayView({
-  dayIndex,
-  items,
+  dayItems,
   onAdd,
   onItemDeleted,
 }: {
-  dayIndex: number
-  items: MealPlanItem[]
+  dayItems: MealPlanItem[]
   onAdd?: (mealType: MealType) => void
   onItemDeleted?: (itemId: number) => void
 }) {
   const { t, ta } = useLanguage()
   const MEALS = ta('plannerMeals')
-  const dayItems = items.filter(i => i.day_number === dayIndex + 1)
   const totalKcal = dayItems.reduce((s, m) => s + (m.kcal ?? 0), 0)
-  const emptySlots = MEALS.slice(dayItems.length)
+  const assigned = new Set<number>()
+
+  const slots = MEALS.map((mealLabel, idx) => {
+    const mealType = SLOT_MEAL_TYPES[idx] ?? 'other'
+    const item = dayItems.find(i => !assigned.has(i.id) && mealNameMatchesSlot(i.meal_name, mealType))
+    if (item) assigned.add(item.id)
+    return { mealLabel, mealType, item }
+  })
+  const extraItems = dayItems.filter(i => !assigned.has(i.id))
 
   const handleDelete = async (itemId: number) => {
     try {
@@ -63,6 +125,34 @@ function DayView({
       onItemDeleted?.(itemId)
     } catch { /* silent */ }
   }
+
+  const renderItem = (item: MealPlanItem, slotLabel: string) => (
+    <div key={item.id} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 group">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{slotLabel}</span>
+        <div className="flex items-center gap-2">
+          {item.kcal != null && <span className="text-xs font-bold text-lily/40">{item.kcal} kcal</span>}
+          <button
+            onClick={() => handleDelete(item.id)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-lg text-lily/30 hover:text-red-400 hover:bg-red-50 cursor-pointer"
+            aria-label="Delete"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+      <div>
+        <p className="text-sm font-bold text-lily">{item.description ?? item.meal_name}</p>
+      </div>
+      {(item.protein || item.fat || item.carbs) && (
+        <div className="flex gap-3 mt-2">
+          {item.protein != null && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
+          {item.fat != null && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
+          {item.carbs != null && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="space-y-3">
@@ -73,59 +163,30 @@ function DayView({
         </div>
       )}
 
-      {dayItems.map(item => (
-        <div key={item.id} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 group">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{item.meal_name}</span>
-            <div className="flex items-center gap-2">
-              {item.kcal && <span className="text-xs font-bold text-lily/40">{item.kcal} kcal</span>}
-              <button
-                onClick={() => handleDelete(item.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-lg text-lily/30 hover:text-red-400 hover:bg-red-50 cursor-pointer"
-                aria-label="Delete"
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          </div>
-          <div>
-            {/* Show description (dish name) as title; fall back to meal_name if missing */}
-            <p className="text-sm font-bold text-lily">{item.description ?? item.meal_name}</p>
-          </div>
-          {(item.protein || item.fat || item.carbs) && (
-            <div className="flex gap-3 mt-2">
-              {item.protein && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
-              {item.fat && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
-              {item.carbs && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {/* Empty slots — only shown when there's room; replaces the "no meals" message */}
-      {emptySlots.length > 0 ? (
-        emptySlots.map((meal, idx) => (
-          <div key={`empty-${idx}`} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
+      {slots.map(({ mealLabel, mealType, item }) =>
+        item ? renderItem(item, mealLabel) : (
+          <div key={mealType} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{meal}</span>
+              <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{mealLabel}</span>
             </div>
             <button
-              onClick={() => onAdd?.(SLOT_MEAL_TYPES[dayItems.length + idx] ?? 'other')}
+              onClick={() => onAdd?.(mealType)}
               className="flex items-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer"
             >
               <Plus size={14} /> {t('plannerAddMeal')}
             </button>
           </div>
-        ))
-      ) : (
-        // All slots filled — still show an add button at the bottom
-        <button
-          onClick={() => onAdd?.('other')}
-          className="w-full flex items-center justify-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer py-2"
-        >
-          <Plus size={14} /> {t('plannerAddMeal')}
-        </button>
+        )
       )}
+
+      {extraItems.map(item => renderItem(item, item.meal_name))}
+
+      <button
+        onClick={() => onAdd?.('other')}
+        className="w-full flex items-center justify-center gap-1.5 text-sm font-bold text-lily/35 hover:text-lily/60 transition-colors cursor-pointer py-2"
+      >
+        <Plus size={14} /> {t('plannerAddMeal')}
+      </button>
     </div>
   )
 }
@@ -276,25 +337,6 @@ function weekLabel(startDate: Date) {
   return `${fmt.format(startDate)} - ${fmt.format(end)}`
 }
 
-function parseDateOnly(value: string) {
-  return new Date(`${value}T00:00:00`)
-}
-
-function formatDateOnly(value: Date) {
-  const year = value.getFullYear()
-  const month = String(value.getMonth() + 1).padStart(2, '0')
-  const day = String(value.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function getWeekStart(value: Date) {
-  const start = new Date(value)
-  const day = start.getDay()
-  const offset = day === 0 ? -6 : 1 - day
-  start.setDate(start.getDate() + offset)
-  return start
-}
-
 export default function PlannerPage() {
   const { t } = useLanguage()
   const [tab, setTab] = useState<Tab>('plan')
@@ -320,7 +362,14 @@ export default function PlannerPage() {
     try {
       const data = await mealPlanner.list()
       setPlans(data)
-      if (data.length > 0) setActivePlan(data[0])
+      setActivePlan(prev => {
+        if (data.length === 0) return null
+        if (prev) {
+          const updated = data.find(p => p.id === prev.id)
+          if (updated) return updated
+        }
+        return data[0]
+      })
     } catch { /* silent */ } finally {
       setLoading(false)
     }
@@ -345,7 +394,9 @@ export default function PlannerPage() {
     setGenerating(true)
     setError('')
     try {
-      const baseDate = activePlan ? parseDateOnly(activePlan.start_date) : getWeekStart(new Date())
+      const baseDate = activePlan
+        ? getWeekStart(parseDateOnly(activePlan.start_date))
+        : getWeekStart(new Date())
       const planStartDate = new Date(baseDate)
       planStartDate.setDate(baseDate.getDate() + selectedDay)
       const daysRemaining = Math.max(1, 7 - selectedDay)
@@ -388,10 +439,25 @@ export default function PlannerPage() {
     } catch { /* silent */ }
   }
 
-  const openPlanAddForm = (mealType: MealType) => {
+  const openPlanAddForm = async (mealType: MealType) => {
     setEditEntry(undefined)
     setPendingMealType(mealType)
     setAddingToPlan(true)
+
+    if (!activePlan) {
+      try {
+        const weekStart = getWeekStart(new Date())
+        const plan = await mealPlanner.createPlan({
+          start_date: formatDateOnly(weekStart),
+          days_count: 7,
+        })
+        setActivePlan(plan)
+        setPlans(p => [plan, ...p])
+      } catch {
+        return
+      }
+    }
+
     setShowEntryForm(true)
   }
 
@@ -402,8 +468,11 @@ export default function PlannerPage() {
     setShowEntryForm(true)
   }
 
-  const currentItems = activePlan?.items ?? []
-  const startDate = activePlan ? parseDateOnly(activePlan.start_date) : new Date()
+  const selectedDayItems = activePlan ? getItemsForSelectedDay(activePlan, selectedDay) : []
+  const selectedPlanDayNumber = activePlan ? getPlanDayNumber(activePlan, selectedDay) : null
+  const weekDisplayStart = activePlan
+    ? getWeekStart(parseDateOnly(activePlan.start_date))
+    : getWeekStart(new Date())
 
   return (
     <div className="min-h-dvh bg-white">
@@ -422,7 +491,7 @@ export default function PlannerPage() {
           >
             <ChevronLeft size={20} />
           </button>
-          <span className="text-sm font-extrabold text-lily">{weekLabel(startDate)}</span>
+          <span className="text-sm font-extrabold text-lily">{weekLabel(weekDisplayStart)}</span>
           <button
             disabled={plans.length <= 1}
             onClick={() => {
@@ -475,8 +544,7 @@ export default function PlannerPage() {
           </div>
         ) : tab === 'plan' ? (
           <DayView
-            dayIndex={selectedDay}
-            items={currentItems}
+            dayItems={selectedDayItems}
             onAdd={openPlanAddForm}
             onItemDeleted={handlePlanItemDeleted}
           />
@@ -523,7 +591,7 @@ export default function PlannerPage() {
           defaultMealType={pendingMealType}
           context="planner"
           planId={addingToPlan ? activePlan?.id : undefined}
-          dayNumber={addingToPlan ? selectedDay + 1 : undefined}
+          dayNumber={addingToPlan && selectedPlanDayNumber != null ? selectedPlanDayNumber : undefined}
           onClose={() => setShowEntryForm(false)}
           onSaved={() => {
             setShowEntryForm(false)
