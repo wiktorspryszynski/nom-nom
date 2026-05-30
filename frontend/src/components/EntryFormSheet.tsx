@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Dumbbell, Loader2, Sparkles, Utensils } from 'lucide-react'
+import { Bookmark, Dumbbell, Loader2, Sparkles, Utensils } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { library, tracker, type DailyEntry, type SavedItem } from '../lib/api'
 
@@ -29,7 +29,7 @@ export default function EntryFormSheet({
   const [protein, setProtein] = useState(entry?.protein != null ? String(entry.protein) : '')
   const [fat, setFat] = useState(entry?.fat != null ? String(entry.fat) : '')
   const [carbs, setCarbs] = useState(entry?.carbs != null ? String(entry.carbs) : '')
-  const [saveToLibrary, setSaveToLibrary] = useState(isLibraryContext)
+  const [saveToLibrary, setSaveToLibrary] = useState(true)
   const [saving, setSaving] = useState(false)
   const [guessing, setGuessing] = useState(false)
 
@@ -226,8 +226,20 @@ export default function EntryFormSheet({
             onChange={e => handleNameChange(e.target.value)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
             placeholder={t('entryFormNamePlaceholder')}
-            className="w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors"
+            className={`w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors ${!isLibraryContext && !isEdit ? 'pr-11' : ''}`}
           />
+          {!isLibraryContext && !isEdit && (
+            <button
+              type="button"
+              onClick={() => setSaveToLibrary(v => !v)}
+              title={t('entryFormSaveToLibrary')}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors cursor-pointer ${
+                saveToLibrary ? 'text-lily' : 'text-lily/25 hover:text-lily/50'
+              }`}
+            >
+              <Bookmark size={15} fill={saveToLibrary ? 'currentColor' : 'none'} />
+            </button>
+          )}
           {showSuggestions && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border-[2px] border-lily/20 shadow-lg z-10 overflow-hidden">
               {suggestions.map(item => (
@@ -291,19 +303,6 @@ export default function EntryFormSheet({
               </div>
             ))}
           </div>
-        )}
-
-        {/* Save to library toggle (not shown in library context or edit mode) */}
-        {!isLibraryContext && !isEdit && (
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={saveToLibrary}
-              onChange={e => setSaveToLibrary(e.target.checked)}
-              className="w-4 h-4 rounded accent-lily cursor-pointer"
-            />
-            <span className="text-xs font-bold text-lily/60">{t('entryFormSaveToLibrary')}</span>
-          </label>
         )}
 
         <div className="flex gap-3 pt-1">
