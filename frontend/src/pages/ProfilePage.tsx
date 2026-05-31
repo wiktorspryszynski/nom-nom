@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Target, LogOut, ChevronRight, Pencil, Check, Loader2, Zap } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
@@ -77,6 +78,7 @@ function computeRecommendedProtein(weightKg: number, goalType: string): number {
 }
 
 export default function ProfilePage() {
+  const navigate = useNavigate()
   const { logout } = useAuth()
   const { t, lang, setLang } = useLanguage()
 
@@ -272,7 +274,11 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <button className="w-full flex items-center justify-between py-3.5 cursor-pointer hover:text-lily/80 transition-colors">
+          <button
+            type="button"
+            onClick={() => navigate('/profile/privacy')}
+            className="w-full flex items-center justify-between py-3.5 cursor-pointer hover:text-lily/80 transition-colors"
+          >
             <span className="text-sm font-bold text-lily/70">{t('profilePrivacy')}</span>
             <ChevronRight size={14} className="text-lily/30" />
           </button>

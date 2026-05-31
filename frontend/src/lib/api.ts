@@ -178,6 +178,8 @@ export const measurements = {
 export const profile = {
   me: () => api.get<UserProfile>('/api/auth/me'),
   update: (fields: Partial<UserProfile>) => api.put<{ ok: boolean }>('/api/auth/me', fields),
+  exportData: () => api.get<Record<string, unknown>>('/api/auth/export'),
+  deleteAccount: () => api.delete<{ ok: boolean }>('/api/auth/me'),
 }
 
 export const mealPlanner = {
