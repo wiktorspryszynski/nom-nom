@@ -108,7 +108,6 @@ function DayView({
   onItemDeleted,
   onItemEdited,
   onToggleEaten,
-  eatenLogs,
 }: {
   dayItems: MealPlanItem[]
   onAdd?: (mealType: MealType) => void

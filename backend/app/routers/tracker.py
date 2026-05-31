@@ -205,7 +205,7 @@ def _call_claude_vision(b64: str, media_type: str, language: str = "pl", model: 
 
 async def _try_usda_first(text: str) -> dict | None:
     """Return nutrition dict if USDA finds a confident match for a short query, else None."""
-    if not settings.usda_api_key:
+    if not settings.usda_available:
         return None
     # Skip non-ASCII queries — USDA is an English database; Polish/accented text returns garbage
     if not text.isascii():
@@ -549,7 +549,7 @@ async def search_food(
     current_user: User = Depends(get_current_user),
 ):
     """USDA FoodData Central text search — used as AI fallback."""
-    if not settings.usda_api_key:
+    if not settings.usda_available:
         raise HTTPException(status_code=503, detail="USDA_UNAVAILABLE")
 
     url = "https://api.nal.usda.gov/fdc/v1/foods/search"
