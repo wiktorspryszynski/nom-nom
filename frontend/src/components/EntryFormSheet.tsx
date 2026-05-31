@@ -114,6 +114,13 @@ export default function EntryFormSheet({
     }
   }
 
+  const sanitizeNumeric = (val: string) =>
+    val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+
+  const blockInvalidNumericKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault()
+  }
+
   const mealTypeLabel = (mt: MealType) => {
     const map: Record<MealType, string> = {
       breakfast: t('entryFormMealTypeBreakfast'),
@@ -327,7 +334,8 @@ export default function EntryFormSheet({
             <input
               type="number"
               value={kcal}
-              onChange={e => setKcal(e.target.value)}
+              onChange={e => setKcal(sanitizeNumeric(e.target.value))}
+              onKeyDown={blockInvalidNumericKey}
               placeholder={t('photoLogCalories')}
               min={0}
               className="w-full bg-ivory border-[2px] border-lily/30 text-lily px-4 py-3 pr-16 rounded-xl text-sm font-semibold outline-none focus:border-lily/60 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -360,7 +368,8 @@ export default function EntryFormSheet({
                   <input
                     type="number"
                     value={value}
-                    onChange={e => set(e.target.value)}
+                    onChange={e => set(sanitizeNumeric(e.target.value))}
+                    onKeyDown={blockInvalidNumericKey}
                     min={0}
                     className="w-full bg-ivory border-[2px] border-lily/20 text-lily px-3 py-2 pr-6 rounded-lg text-sm font-semibold outline-none focus:border-lily/50 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
