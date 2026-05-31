@@ -48,14 +48,25 @@ class SaveLogRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _build_vision_prompt(language: str) -> str:
-    name_lang = "Polish" if language == "pl" else "English"
+    is_polish = language == "pl"
+    name_lang = "Polish" if is_polish else "English"
+    not_food_error = (
+        "Nie rozpoznano jedzenia na zdjęciu"
+        if is_polish
+        else "No food detected in the photo"
+    )
+    serving_examples = (
+        "'1 plaster', '250 g', '1 szklanka', '2 kawałki'"
+        if is_polish
+        else "'1 slice', '250 g', '1 cup', '2 pieces'"
+    )
     return (
         f"Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
         f'{{"name":"short {name_lang} name (max 4 words)","description":"one {name_lang} sentence describing the dish",'
-        f'"serving_size":"visible portion estimate in {name_lang} (e.g. \'1 plaster\', \'250 g\', \'1 szklanka\', \'2 pieces\')",'
+        f'"serving_size":"visible portion estimate in {name_lang} (e.g. {serving_examples})",'
         '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
         "Estimate for the portion actually visible in the photo. If this is not a food photo return:\n"
-        '{"error":"Nie rozpoznano jedzenia na zdjęciu"}'
+        f'{{"error":"{not_food_error}"}}'
     )
 
 _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
@@ -80,6 +91,12 @@ def _build_text_system(language: str) -> list[Any]:
         '30 min running -> {"name":"running 30 min","kcal":300,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
         """
     
+    parse_error = (
+        "Nie rozpoznano posiłku ani aktywności"
+        if is_polish
+        else "Could not recognize meal or activity"
+    )
+
     prompt = (
         f"You are a nutrition assistant. The user's language is {lang_note}.\n"
         "Analyze the food or exercise description and return ONLY a raw JSON object "
@@ -93,7 +110,7 @@ def _build_text_system(language: str) -> list[Any]:
         "Examples:\n"
         + (polish_examples if is_polish else english_examples) +
         "For exercise: set protein/fat/carbs to 0, kcal = calories burned (positive number).\n"
-        'If unparseable: {"error":"Nie rozpoznano posiłku ani aktywności"}'
+        f'If unparseable: {{"error":"{parse_error}"}}'
     )
     return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
 
