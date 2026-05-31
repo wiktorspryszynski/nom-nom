@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -29,3 +29,13 @@ class MealPlanItem(Base):
     fat: Mapped[float | None] = mapped_column(Float)
     carbs: Mapped[float | None] = mapped_column(Float)
     recipe_text: Mapped[str | None] = mapped_column(Text)
+
+
+class EatenPlanItem(Base):
+    __tablename__ = "eaten_plan_items"
+    __table_args__ = (UniqueConstraint("plan_item_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    plan_item_id: Mapped[int] = mapped_column(Integer, ForeignKey("meal_plan_items.id", ondelete="CASCADE"), nullable=False)
+    food_log_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("food_logs.id", ondelete="SET NULL"))
+    eaten_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)

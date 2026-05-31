@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Dumbbell, Utensils, Pencil } from 'lucide-react'
+import { Sparkles, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Dumbbell, Utensils, Pencil, CheckCircle2, Circle } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import EntryFormSheet from '../components/EntryFormSheet'
 import { EntryRow } from '../components/EntryRow'
@@ -44,6 +44,11 @@ const MEAL_NAME_ALIASES: Record<MealType, string[]> = {
 function mealNameMatchesSlot(mealName: string, slotType: MealType): boolean {
   const normalized = mealName.toLowerCase().trim()
   return MEAL_NAME_ALIASES[slotType].some(alias => normalized.includes(alias))
+}
+
+function mealTypeFromName(mealName: string): MealType {
+  const types: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
+  return types.find(t => mealNameMatchesSlot(mealName, t)) ?? 'other'
 }
 
 function getSlotCalendarDate(selectedDayIndex: number, referenceDate: Date) {
@@ -101,10 +106,15 @@ function DayView({
   dayItems,
   onAdd,
   onItemDeleted,
+  onItemEdited,
+  onToggleEaten,
+  eatenLogs,
 }: {
   dayItems: MealPlanItem[]
   onAdd?: (mealType: MealType) => void
   onItemDeleted?: (itemId: number) => void
+  onItemEdited?: (item: MealPlanItem) => void
+  onToggleEaten?: (item: MealPlanItem) => void
 }) {
   const { t, ta } = useLanguage()
   const MEALS = ta('plannerMeals')
@@ -126,33 +136,53 @@ function DayView({
     } catch { /* silent */ }
   }
 
-  const renderItem = (item: MealPlanItem, slotLabel: string) => (
-    <div key={item.id} className="bg-white rounded-2xl border-[2px] border-lily/15 p-4 group">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{slotLabel}</span>
-        <div className="flex items-center gap-2">
-          {item.kcal != null && <span className="text-xs font-bold text-lily/40">{item.kcal} kcal</span>}
-          <button
-            onClick={() => handleDelete(item.id)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-lg text-lily/30 hover:text-red-400 hover:bg-red-50 cursor-pointer"
-            aria-label="Delete"
-          >
-            <Trash2 size={13} />
-          </button>
+  const renderItem = (item: MealPlanItem, slotLabel: string) => {
+    const isEaten = item.eaten
+    return (
+      <div key={item.id} className={`bg-white rounded-2xl border-[2px] border-lily/15 p-4 group transition-opacity ${isEaten ? 'opacity-60' : ''}`}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{slotLabel}</span>
+          <div className="flex items-center gap-1">
+            {item.kcal != null && <span className="text-xs font-bold text-lily/40 mr-1">{item.kcal} kcal</span>}
+            <button
+              onClick={() => onToggleEaten?.(item)}
+              title={t('plannerMarkEaten')}
+              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors cursor-pointer ${
+                isEaten ? 'text-green-500' : 'text-lily/25 hover:text-green-400 active:text-green-400'
+              }`}
+              aria-label={t('plannerMarkEaten')}
+            >
+              {isEaten ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+            </button>
+            <button
+              onClick={() => onItemEdited?.(item)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-lily/25 hover:text-lily/60 active:text-lily/60 cursor-pointer"
+              aria-label="Edit"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              onClick={() => handleDelete(item.id)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-lily/20 hover:text-red-400 active:text-red-400 hover:bg-red-50 cursor-pointer"
+              aria-label="Delete"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
-      </div>
-      <div>
-        <p className="text-sm font-bold text-lily">{item.description ?? item.meal_name}</p>
-      </div>
-      {(item.protein || item.fat || item.carbs) && (
-        <div className="flex gap-3 mt-2">
-          {item.protein != null && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
-          {item.fat != null && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
-          {item.carbs != null && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
+        <div>
+          <p className={`text-sm font-bold text-lily ${isEaten ? 'line-through' : ''}`}>{item.description ?? item.meal_name}</p>
         </div>
-      )}
-    </div>
-  )
+        {(item.protein || item.fat || item.carbs) && (
+          <div className="flex gap-3 mt-2">
+            {item.protein != null && <span className="text-[10px] font-bold text-lily/30">P: {item.protein}g</span>}
+            {item.fat != null && <span className="text-[10px] font-bold text-lily/30">T: {item.fat}g</span>}
+            {item.carbs != null && <span className="text-[10px] font-bold text-lily/30">W: {item.carbs}g</span>}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -357,6 +387,7 @@ export default function PlannerPage() {
   const [editEntry, setEditEntry] = useState<DailyEntry | undefined>()
   const [pendingMealType, setPendingMealType] = useState<MealType>('other')
   const [addingToPlan, setAddingToPlan] = useState(false)
+  const [editingPlanItem, setEditingPlanItem] = useState<MealPlanItem | undefined>()
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -441,6 +472,7 @@ export default function PlannerPage() {
 
   const openPlanAddForm = async (mealType: MealType) => {
     setEditEntry(undefined)
+    setEditingPlanItem(undefined)
     setPendingMealType(mealType)
     setAddingToPlan(true)
 
@@ -461,8 +493,28 @@ export default function PlannerPage() {
     setShowEntryForm(true)
   }
 
+  const handleToggleEaten = async (item: MealPlanItem) => {
+    try {
+      if (item.eaten) {
+        await mealPlanner.unmarkEaten(item.id)
+      } else {
+        await mealPlanner.markEaten(item.id)
+      }
+      fetchPlans()
+      fetchDaily()
+    } catch { /* silent */ }
+  }
+
+  const openEditPlanItem = (item: MealPlanItem) => {
+    setEditingPlanItem(item)
+    setPendingMealType(mealTypeFromName(item.meal_name))
+    setAddingToPlan(false)
+    setShowEntryForm(true)
+  }
+
   const openAddForm = (mealType: MealType) => {
     setEditEntry(undefined)
+    setEditingPlanItem(undefined)
     setPendingMealType(mealType)
     setAddingToPlan(false)
     setShowEntryForm(true)
@@ -547,6 +599,8 @@ export default function PlannerPage() {
             dayItems={selectedDayItems}
             onAdd={openPlanAddForm}
             onItemDeleted={handlePlanItemDeleted}
+            onItemEdited={openEditPlanItem}
+            onToggleEaten={handleToggleEaten}
           />
         ) : (
           <LibraryTab />
@@ -588,14 +642,16 @@ export default function PlannerPage() {
       {showEntryForm && (
         <EntryFormSheet
           entry={editEntry}
+          planItem={editingPlanItem}
           defaultMealType={pendingMealType}
-          context="planner"
-          planId={addingToPlan ? activePlan?.id : undefined}
-          dayNumber={addingToPlan && selectedPlanDayNumber != null ? selectedPlanDayNumber : undefined}
-          onClose={() => setShowEntryForm(false)}
+          context={editingPlanItem ? 'planner' : addingToPlan ? 'planner' : 'dashboard'}
+          planId={addingToPlan && !editingPlanItem ? activePlan?.id : undefined}
+          dayNumber={addingToPlan && !editingPlanItem && selectedPlanDayNumber != null ? selectedPlanDayNumber : undefined}
+          onClose={() => { setShowEntryForm(false); setEditingPlanItem(undefined) }}
           onSaved={() => {
             setShowEntryForm(false)
-            if (addingToPlan) fetchPlans()
+            setEditingPlanItem(undefined)
+            if (editingPlanItem || addingToPlan) fetchPlans()
             else fetchDaily()
           }}
         />

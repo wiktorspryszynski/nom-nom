@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bookmark, Dumbbell, Loader2, Sparkles, Utensils } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
-import { library, mealPlanner, tracker, type DailyEntry, type SavedItem } from '../lib/api'
+import { library, mealPlanner, tracker, type DailyEntry, type MealPlanItem, type SavedItem } from '../lib/api'
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
 
 export default function EntryFormSheet({
   entry,
   savedItem,
+  planItem,
   defaultMealType,
   context = 'dashboard',
   planId,
@@ -17,6 +18,7 @@ export default function EntryFormSheet({
 }: {
   entry?: DailyEntry
   savedItem?: SavedItem
+  planItem?: MealPlanItem
   defaultMealType?: MealType
   context?: 'dashboard' | 'planner' | 'library'
   planId?: number
@@ -27,24 +29,31 @@ export default function EntryFormSheet({
   const { t } = useLanguage()
   const isEdit = Boolean(entry)
   const isLibraryEdit = Boolean(savedItem)
+  const isPlanItemEdit = Boolean(planItem)
   const isLibraryContext = context === 'library'
 
   const [type, setType] = useState<'food' | 'exercise'>(
     savedItem?.item_type === 'exercise' ? 'exercise' : entry?.type ?? 'food'
   )
   const [mealType, setMealType] = useState<MealType>(defaultMealType ?? 'other')
-  const [name, setName] = useState(savedItem?.name ?? entry?.name ?? '')
+  const [name, setName] = useState(
+    planItem ? (planItem.description ?? planItem.meal_name) : savedItem?.name ?? entry?.name ?? ''
+  )
   const [kcal, setKcal] = useState(
-    savedItem ? (savedItem.kcal != null ? String(savedItem.kcal) : '') : entry ? String(Math.abs(entry.kcal)) : ''
+    planItem ? (planItem.kcal != null ? String(planItem.kcal) : '')
+    : savedItem ? (savedItem.kcal != null ? String(savedItem.kcal) : '') : entry ? String(Math.abs(entry.kcal)) : ''
   )
   const [protein, setProtein] = useState(
-    savedItem?.protein != null ? String(savedItem.protein) : entry?.protein != null ? String(entry.protein) : ''
+    planItem?.protein != null ? String(planItem.protein)
+    : savedItem?.protein != null ? String(savedItem.protein) : entry?.protein != null ? String(entry.protein) : ''
   )
   const [fat, setFat] = useState(
-    savedItem?.fat != null ? String(savedItem.fat) : entry?.fat != null ? String(entry.fat) : ''
+    planItem?.fat != null ? String(planItem.fat)
+    : savedItem?.fat != null ? String(savedItem.fat) : entry?.fat != null ? String(entry.fat) : ''
   )
   const [carbs, setCarbs] = useState(
-    savedItem?.carbs != null ? String(savedItem.carbs) : entry?.carbs != null ? String(entry.carbs) : ''
+    planItem?.carbs != null ? String(planItem.carbs)
+    : savedItem?.carbs != null ? String(savedItem.carbs) : entry?.carbs != null ? String(entry.carbs) : ''
   )
   const [saveToLibrary, setSaveToLibrary] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -117,10 +126,18 @@ export default function EntryFormSheet({
   }
 
   const handleSave = async () => {
-    if (!name.trim() || (!kcal && !isLibraryContext && !isLibraryEdit)) return
+    if (!name.trim() || (!kcal && !isLibraryContext && !isLibraryEdit && !isPlanItemEdit)) return
     setSaving(true)
     try {
-      if (isLibraryEdit && savedItem) {
+      if (isPlanItemEdit && planItem) {
+        await mealPlanner.updateItem(planItem.id, {
+          description: name.trim(),
+          kcal: kcal ? Number(kcal) : undefined,
+          protein: protein ? Number(protein) : undefined,
+          fat: fat ? Number(fat) : undefined,
+          carbs: carbs ? Number(carbs) : undefined,
+        })
+      } else if (isLibraryEdit && savedItem) {
         await library.update(savedItem.id, {
           name: name.trim(),
           item_type: type,
@@ -150,7 +167,7 @@ export default function EntryFormSheet({
       } else if (context === 'planner' && planId != null && dayNumber != null) {
         await mealPlanner.addItem(planId, {
           day_number: dayNumber,
-          meal_name: mealTypeLabel(mealType),
+          meal_name: mealType,
           description: name.trim(),
           kcal: kcal ? Number(kcal) : undefined,
           protein: protein ? Number(protein) : undefined,
@@ -199,7 +216,7 @@ export default function EntryFormSheet({
 
   const mealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'other']
 
-  const canSave = isLibraryContext || isLibraryEdit
+  const canSave = isLibraryContext || isLibraryEdit || isPlanItemEdit
     ? Boolean(name.trim())
     : Boolean(name.trim() && kcal)
 
@@ -210,10 +227,11 @@ export default function EntryFormSheet({
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-lg font-extrabold text-lily">
-          {isLibraryEdit
+          {isLibraryEdit || isEdit || isPlanItemEdit
             ? t('entryFormEditTitle')
             : isLibraryContext ? t('plannerLibraryAdd')
-            : isEdit ? t('entryFormEditTitle') : t('dashboardAddEntry')}
+            : context === 'planner' ? t('plannerSaveItem')
+            : t('dashboardAddEntry')}
         </h2>
 
         {!isEdit && !isLibraryEdit && (
@@ -367,7 +385,7 @@ export default function EntryFormSheet({
             onClick={handleSave}
             className="flex-1 bg-lily text-primary rounded-2xl py-3 text-sm font-extrabold cursor-pointer disabled:opacity-40 disabled:cursor-default"
           >
-            {saving ? '…' : t('photoLogSave')}
+            {saving ? '…' : (context === 'planner' && !isPlanItemEdit) ? t('plannerSaveItem') : t('photoLogSave')}
           </button>
         </div>
       </div>

@@ -61,6 +61,7 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
+  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   delete: <T>(path: string) => request<T>('DELETE', path),
   postForm: <T>(path: string, form: FormData) => request<T>('POST', path, form),
 }
@@ -129,6 +130,7 @@ export interface MealPlanItem {
   protein: number | null
   fat: number | null
   carbs: number | null
+  eaten: boolean
 }
 
 export interface MealPlan {
@@ -187,6 +189,10 @@ export const mealPlanner = {
   deleteItem: (itemId: number) => api.delete<{ ok: boolean }>(`/api/meal-planner/items/${itemId}`),
   addItem: (planId: number, item: { day_number: number; meal_name: string; description?: string; kcal?: number; protein?: number; fat?: number; carbs?: number }) =>
     api.post<MealPlanItem>(`/api/meal-planner/plans/${planId}/items`, item),
+  updateItem: (itemId: number, data: { description?: string; kcal?: number; protein?: number; fat?: number; carbs?: number }) =>
+    api.patch<MealPlanItem>(`/api/meal-planner/items/${itemId}`, data),
+  markEaten: (itemId: number) => api.post<MealPlanItem>(`/api/meal-planner/items/${itemId}/eat`),
+  unmarkEaten: (itemId: number) => api.delete<MealPlanItem>(`/api/meal-planner/items/${itemId}/eat`),
 }
 
 export interface SavedItem {
