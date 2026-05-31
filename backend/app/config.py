@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7  # 1 week
 
     anthropic_api_key: str | None = None
+    use_usda: bool = False
     usda_api_key: str = ""
     ai_calls_per_user_per_day: int = 50
     demo_ai_call_limit: int = 15  # lifetime cap for demo accounts (never resets)
@@ -41,6 +42,11 @@ class Settings(BaseSettings):
     @property
     def ai_available(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @computed_field
+    @property
+    def usda_available(self) -> bool:
+        return self.use_usda and bool(self.usda_api_key)
 
     class Config:
         env_file = ".env"

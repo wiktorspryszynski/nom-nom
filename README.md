@@ -5,7 +5,7 @@
 # NomNom
 
 A meal tracking and planning PWA.<br>
-You describe what you ate (or photograph it), the app extracts the nutrition data and shows you where you stand against your daily targets — without asking follow-up questions.
+You take a photo or describe what you ate, the app extracts the nutrition data and shows you where you stand against your daily targets — without asking follow-up questions.
 
 **Live:** https://fit.spryszynski.pl
 
@@ -38,23 +38,26 @@ graph TD
     Browser["Browser / PWA"]
 
     subgraph Frontend ["Frontend (React + Vite)"]
-        UI["Pages: Dashboard · Tracker · Measurements · Planner · Profile"]
+        UI["Pages: Dashboard · Planner · Measurements · Profile"]
         I18N["i18n context (PL / EN)"]
         Auth["AuthContext — JWT in localStorage"]
     end
 
     subgraph Backend ["Backend (FastAPI — port 8001)"]
-        AuthRouter["/api/auth — OAuth2 + JWT"]
-        TrackerRouter["/api/tracker — text & photo logs"]
-        MeasRouter["/api/measurements"]
-        PlannerRouter["/api/meal-planner"]
+        AuthRouter["/api/auth — JWT + GitHub OAuth"]
+        RegisterRouter["/api/register — sign-up wizard"]
+        TrackerRouter["/api/tracker — logs, water, AI parse"]
+        PlannerRouter["/api/meal-planner — plans + AI generate"]
+        LibraryRouter["/api/library — saved meals & exercises"]
+        MeasRouter["/api/measurements — body metrics (EAV)"]
     end
 
     subgraph AI ["Anthropic"]
         Haiku["Claude Haiku 4.5\ntext log parsing"]
-        Sonnet["Claude Sonnet 4.6\nvision — photo analysis"]
+        Sonnet["Claude Sonnet 4.6\nvision + meal plan generation"]
     end
 
+    USDA["USDA FoodData Central\n(optional, off by default)"]
     DB[("PostgreSQL 16")]
     Nginx["nginx (prod)\nserves built frontend\nproxies /api → backend"]
 
@@ -66,6 +69,8 @@ graph TD
     Backend --> DB
     Backend -->|text entry| Haiku
     Backend -->|photo upload| Sonnet
+    Backend -->|meal plan generate| Sonnet
+    Backend -.->|USE_USDA=true| USDA
 ```
 
 ---
@@ -74,44 +79,61 @@ graph TD
 
 ### Implemented
 
-**Daily Tracker**
-- Type any food or exercise description → Claude Haiku parses it into kcal, protein, fat, carbs
-- Upload a photo → Claude Sonnet Vision identifies the dish and estimates nutrition
-- Zero follow-up questions: if confidence exceeds the threshold the result is accepted immediately
-- Demo mode when `ANTHROPIC_API_KEY` is not set — returns placeholder data instead of failing with 500
+**Daily tracker (Dashboard — `/`)**
+- Text log → Claude Haiku parses food or exercise into kcal and macros; auto-saves when confidence is high enough
+- Photo log → Claude Sonnet Vision identifies the dish; portion multiplier (¼–1×) before save
+- Manual entry form with saved-item autocomplete and optional AI macro guess
+- Water intake widget (glasses per day)
+- Calorie ring (consumed / burned / net vs. daily target) and macro progress bars
+- Chronological entry list with edit (food) and delete
+- Optional USDA fast path for short English food names when `USE_USDA=true` and `USDA_API_KEY` is set (off by default)
+- AI unavailable badge when `ANTHROPIC_API_KEY` is missing; demo accounts have a lifetime AI call cap
 
-**Dashboard**
-- Calorie ring showing consumed / burned / net vs. daily target
-- Macro progress bars (protein, fat, carbs) with per-macro goals
-- Chronological entry list with food / exercise icons and timestamps
+**Meal planner (`/planner`)**
+- AI-generated weekly plans via Claude Sonnet (`POST /api/meal-planner/generate`)
+- Manual add / edit / delete meals per day and meal slot (breakfast, lunch, dinner, snack)
+- Mark plan items as eaten → creates linked food log entries
+- “Saved” tab — personal library of favourite foods and exercises (`/api/library`)
+- Embedded view of today’s log on the Plan tab
 
-**Measurements**
-- Weight entry form with BMI calculation and a contextual BMI scale
-- Weight history table with per-entry delta (change vs. previous entry)
-- SVG line chart for weight trend
+**Measurements (`/measurements`)**
+- Weight entry with BMI calculation and contextual BMI scale
+- Body composition metrics (body fat %, water %, muscle mass) via EAV schema
+- Weight history table with per-entry delta and SVG trend chart
+- All data persisted to PostgreSQL
 
-**Profile**
-- Inline-editable goal fields: calorie target, weight target, TDEE
-- Language toggle — Polish / English, persisted in `localStorage`
+**Profile (`/profile`)**
+- Editable goals: calorie target, weight target, TDEE, protein target, height
+- TDEE and calorie-target calculators (modals)
+- Language toggle — Polish / English (UI `localStorage`; default Polish)
+- Demo account AI usage meter
 
 **Auth**
-- JWT-based login, OAuth2 password flow
-- bcrypt password hashing via passlib
-- Hardcoded test account for local development (`admin` / `1234`)
+- JWT login (OAuth2 password flow), bcrypt via passlib
+- GitHub OAuth sign-in when `GITHUB_CLIENT_ID` / `VITE_GITHUB_CLIENT_ID` are configured
+- Three-step registration wizard (profile → body → goals); production uses GitHub-only sign-up (`GITHUB_ONLY = true` in frontend config)
+- Seeded demo account: `demo@nomnom.app` / `demo1234` (15 lifetime AI calls)
 
 **Infrastructure**
-- Progressive Web App — installable, static asset caching via Workbox
+- Progressive Web App — installable, static asset caching via Workbox (`vite-plugin-pwa`)
 - Docker Compose with separate `dev` and `prod` profiles
+- Alembic migrations applied automatically at backend startup
 - Production: nginx serves the Vite bundle and reverse-proxies `/api` to FastAPI
+- CI: push to `main` triggers SSH deploy to the VPS
 
-### Scaffolded / In Progress
+### Not yet implemented
 
-| Feature | Status |
+| Feature | Notes |
 |---|---|
-| Meal planner (Claude Sonnet generation) | UI exists, backend stub returns `{"message": "not implemented"}` |
-| Food / exercise log DB persistence | Endpoints wired, DB writes not yet implemented |
-| Body measurements DB persistence | Endpoints wired, DB writes not yet implemented |
-| USDA FoodData Central nutrition lookup | Key in `.env`, no integration yet |
+| Shopping list | No models or endpoints yet |
+| Recipe generation | `recipe_text` column exists on plan items but is never populated |
+| Meal selection workflow | No “generate 10–12 proposals → pick subset” card UI |
+| Chat-based plan edits | No conversational meal-plan modifications |
+| USDA search in UI | Backend `GET /api/tracker/search` exists; frontend does not call it |
+| Open Food Facts fallback | Not integrated |
+| MET-based exercise calories | `met_value` column exists; exercise kcal comes from AI / manual entry |
+| Preference learning (ML) | No `meal_feedback` or `user_preference_profiles` tables yet |
+| Account upgrade (demo → full) | `account_type` enum exists; no promotion endpoint |
 
 ---
 
@@ -135,8 +157,10 @@ Open `.env` and set at minimum:
 ```env
 POSTGRES_PASSWORD=something_strong
 SECRET_KEY=a_long_random_string   # e.g. output of: openssl rand -hex 32
-ANTHROPIC_API_KEY=sk-ant-...       # optional — app runs in demo mode without it
+ANTHROPIC_API_KEY=sk-ant-...       # optional — AI features disabled without it
 ```
+
+For GitHub sign-in, also set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI`, and `VITE_GITHUB_CLIENT_ID` (see `.env.example`).
 
 ### Run — development
 
@@ -149,6 +173,9 @@ COMPOSE_PROFILES=dev docker compose up --build
 | Frontend (Vite HMR) | http://localhost:5174 |
 | Backend (FastAPI) | http://localhost:8001 |
 | API docs (Swagger) | http://localhost:8001/docs |
+| PostgreSQL | localhost:5433 |
+
+Log in with the seeded demo account (`demo@nomnom.app` / `demo1234`) or complete GitHub OAuth registration.
 
 ### Run — production-like
 
@@ -175,25 +202,36 @@ COMPOSE_PROFILES=prod docker compose up --build
 | `POSTGRES_DB` | No | Database name (default: `nomnom`) | `nomnom` |
 | `POSTGRES_HOST` | Yes | Hostname of the DB service | `db` |
 | `SECRET_KEY` | Yes | JWT signing secret — must be long and random | `openssl rand -hex 32` |
-| `ANTHROPIC_API_KEY` | No | Claude API key. Without it, tracker returns demo responses | `sk-ant-api03-...` |
+| `ANTHROPIC_API_KEY` | No | Claude API key. Without it, AI parsing and meal generation are unavailable | `sk-ant-api03-...` |
 | `CORS_ORIGINS` | Yes | Comma-separated allowed origins | `http://localhost:5174,https://fit.spryszynski.pl` |
-| `USDA_API_KEY` | No | USDA FoodData Central key (not yet integrated) | `DEMO_KEY` |
+| `USE_USDA` | No | Enable USDA FoodData Central lookups (default: `false`) | `false` |
+| `USDA_API_KEY` | No | USDA API key — required only when `USE_USDA=true` | `DEMO_KEY` |
+| `GITHUB_CLIENT_ID` | No | GitHub OAuth app client ID | |
+| `GITHUB_CLIENT_SECRET` | No | GitHub OAuth app secret | |
+| `GITHUB_REDIRECT_URI` | No | OAuth callback URL registered with GitHub | `https://fit.spryszynski.pl/auth/github/callback` |
+| `VITE_GITHUB_CLIENT_ID` | No | Same as `GITHUB_CLIENT_ID`; enables the frontend sign-in button | |
+
+SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `NOTIFY_EMAIL`) are optional — used by `POST /api/demo-request` to notify on demo access requests.
 
 ---
 
 ## Decisions & Tradeoffs
 
-### Haiku for text, Sonnet for vision
+### Haiku for text, Sonnet for vision and planning
 
-Text parsing (food descriptions, exercise entries) uses Claude Haiku 4.5. Extracting structured nutrition data from free-form text is well within Haiku's capability and costs roughly 10× less per token than Sonnet. Photo analysis requires Sonnet 4.6 — Haiku does not support image inputs.
+Text parsing (food descriptions, exercise entries) uses Claude Haiku 4.5. Extracting structured nutrition data from free-form text is well within Haiku's capability and costs roughly 10× less per token than Sonnet. Photo analysis and meal plan generation use Sonnet 4.6 — Haiku does not support image inputs and Sonnet produces better multi-day meal plans.
 
-### Direct LLM estimation instead of a nutrition API
+### LLM-first nutrition with optional USDA
 
-The design includes USDA FoodData Central as the primary nutrition source with Open Food Facts as fallback. In practice, the LLM returns structured estimates directly, which was faster to ship and handles ambiguous inputs ("a bowl of mom's soup") better than a database lookup that expects a canonical food name. The tradeoff is accuracy — database values are lab-measured, LLM values are estimated. `USDA_API_KEY` is already wired in `.env` for when this gap matters enough to close.
+The design includes USDA FoodData Central as an optional fast path, with Open Food Facts planned as a future fallback. In practice, Claude Haiku handles most text entries directly, which handles ambiguous inputs ("a bowl of mom's soup") better than a database lookup that expects a canonical food name. The tradeoff is accuracy — database values are lab-measured, LLM values are estimated. USDA is integrated but disabled by default (`USE_USDA=false`); set `USE_USDA=true` and provide `USDA_API_KEY` to try the fast path for short English food names before falling back to the LLM.
+
+### Demo accounts vs. missing API key
+
+Two separate limits apply: without `ANTHROPIC_API_KEY`, all AI endpoints report unavailable via `/api/health`. Demo users (`account_type=demo`) additionally get a lifetime cap on AI calls (default 15), enforced server-side and surfaced in the UI. Full accounts get a per-day quota (default 50 calls/day, in-memory).
 
 ### No Redis, no server-side sessions
 
-All session state lives in a JWT stored in `localStorage`. The backend is fully stateless. The tradeoff is that tokens cannot be invalidated before expiry without adding a denylist. For a closed two-user app this is acceptable; adding Redis later is straightforward.
+All session state lives in a JWT stored in `localStorage`. The backend is fully stateless. The tradeoff is that tokens cannot be invalidated before expiry without adding a denylist. For a small personal app this is acceptable; adding Redis later is straightforward.
 
 ### Tailwind v4
 
@@ -201,7 +239,7 @@ Tailwind v4 has no `tailwind.config.js` — configuration is CSS-first. This rem
 
 ### EAV schema for body measurements
 
-Body metric types (weight, body fat %, water %, muscle mass) are stored as `(metric_type, value)` rows rather than typed columns. Adding a new metric type requires no schema migration. The tradeoff is that enforcing type constraints and writing typed queries is harder. For a dataset that's read primarily to render trend charts, this is a reasonable exchange.
+Body metric types (weight, body fat %, water %, muscle mass, water glasses) are stored as `(metric_type, value)` rows rather than typed columns. Adding a new metric type requires no schema migration. The tradeoff is that enforcing type constraints and writing typed queries is harder. For a dataset that's read primarily to render trend charts, this is a reasonable exchange.
 
 ### Docker Compose profiles over separate files
 
@@ -209,7 +247,7 @@ One `docker-compose.yml` with two profiles (`dev`, `prod`) instead of a base fil
 
 ### CI/CD
 
-Pushes to `main` now trigger an SSH deploy workflow that updates the production checkout and runs `docker-compose up --build -d` on the VPS.
+Pushes to `main` trigger an SSH deploy workflow (`.github/workflows/deploy-prod.yml`) that updates the production checkout and runs `docker compose up --build -d` on the VPS.
 
 ---
 
@@ -218,26 +256,31 @@ Pushes to `main` now trigger an SSH deploy workflow that updates the production 
 ```
 nom-nom/
 ├── backend/
+│   ├── alembic/             # DB migrations (auto-applied at startup)
 │   ├── app/
-│   │   ├── main.py          # FastAPI app, middleware, router registration
+│   │   ├── main.py          # FastAPI app, router registration, demo user seed
 │   │   ├── config.py        # Pydantic settings (reads from env)
-│   │   ├── database.py      # SQLAlchemy engine + session factory
-│   │   ├── models/          # ORM models (User, …)
-│   │   ├── routers/         # auth, tracker, measurements, meal_planner, demo
-│   │   └── schemas/         # Pydantic request/response schemas
+│   │   ├── database.py      # SQLAlchemy engine + Alembic init
+│   │   ├── models/          # User, FoodLog, ExerciseLog, MealPlan, SavedItem, …
+│   │   ├── routers/         # auth, github_auth, register, tracker, meal_planner,
+│   │   │                    # measurements, library, demo
+│   │   ├── schemas/         # Pydantic request/response schemas
+│   │   └── services/        # email notifications
 │   ├── Dockerfile           # dev — uvicorn --reload
 │   ├── Dockerfile.prod      # prod — 2 uvicorn workers, no reload
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/           # DashboardPage, MeasurementsPage, PlannerPage, ProfilePage
-│   │   ├── components/      # BottomNav, PhotoLogSheet, CalorieCalculatorModal, …
+│   │   ├── pages/           # DashboardPage, PlannerPage, MeasurementsPage,
+│   │   │                    # ProfilePage, LoginPage, SignUpPage, …
+│   │   ├── components/      # BottomNav, PhotoLogSheet, EntryFormSheet, …
 │   │   ├── context/         # AuthContext, LanguageContext
-│   │   ├── i18n/            # translations.ts (PL + EN keys)
-│   │   └── assets/          # NomNom character SVGs
+│   │   ├── i18n/            # translations.ts (PL + EN)
+│   │   └── lib/api.ts       # typed API client
 │   ├── Dockerfile           # dev — Vite dev server
 │   ├── Dockerfile.prod      # prod — Node build stage → nginx:alpine
 │   └── package.json
+├── .github/workflows/       # deploy-prod.yml (+ Claude automation)
 ├── docker-compose.yml       # dev + prod profiles
 └── .env.example
 ```

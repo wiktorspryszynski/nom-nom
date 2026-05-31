@@ -16,6 +16,14 @@ export const NOMNOM_EATING_BROCOLI       = '/nomnom/nomnom_eating_brocoli.png'
 export const NOMNOM_EATING_PIZZA         = '/nomnom/nomnom_eating_pizza_2.png'
 export const NOMNOM_EATING_RAMEN         = '/nomnom/nomnom_eating_ramen_2.png'
 export const NOMNOM_EATING_SALAD         = '/nomnom/nomnom_eating_salad.png'
+
+export const NOMNOM_EATING_ICONS = [
+  NOMNOM_EATING_APPLE,
+  NOMNOM_EATING_BROCOLI,
+  NOMNOM_EATING_PIZZA,
+  NOMNOM_EATING_RAMEN,
+  NOMNOM_EATING_SALAD,
+] as const
 export const NOMNOM_HAPPY                = '/nomnom/nomnom_happy.png'
 export const NOMNOM_SAD                  = '/nomnom/nomnom_sad.png'
 export const NOMNOM_SHOCKED              = '/nomnom/nomnom_shocked.png'

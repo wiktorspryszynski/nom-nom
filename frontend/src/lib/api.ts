@@ -61,6 +61,7 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
+  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   delete: <T>(path: string) => request<T>('DELETE', path),
   postForm: <T>(path: string, form: FormData) => request<T>('POST', path, form),
 }
@@ -129,6 +130,7 @@ export interface MealPlanItem {
   protein: number | null
   fat: number | null
   carbs: number | null
+  eaten: boolean
 }
 
 export interface MealPlan {
@@ -159,7 +161,10 @@ export const tracker = {
   },
   saveLog: (entry: { description: string; kcal: number; protein?: number; fat?: number; carbs?: number; source_type?: string; ai_confidence?: number; activity_type?: string; duration_min?: number; kcal_burned?: number }) =>
     api.post<{ id: number; ok: boolean }>('/api/tracker/log', entry),
+  updateLog: (id: number, entry: { description: string; kcal: number; protein?: number; fat?: number; carbs?: number }) =>
+    api.put<{ ok: boolean }>(`/api/tracker/log/${id}`, entry),
   deleteLog: (id: number) => api.delete<{ ok: boolean }>(`/api/tracker/log/${id}`),
+  deleteExercise: (id: number) => api.delete<{ ok: boolean }>(`/api/tracker/exercise/${id}`),
   logWater: (glasses: number) => api.post<{ ok: boolean; glasses: number }>('/api/tracker/water', { glasses }),
   search: (q: string) => api.get<FoodSearchResult[]>(`/api/tracker/search?q=${encodeURIComponent(q)}`),
 }
@@ -173,12 +178,41 @@ export const measurements = {
 export const profile = {
   me: () => api.get<UserProfile>('/api/auth/me'),
   update: (fields: Partial<UserProfile>) => api.put<{ ok: boolean }>('/api/auth/me', fields),
+  exportData: () => api.get<Record<string, unknown>>('/api/auth/export'),
+  deleteAccount: () => api.delete<{ ok: boolean }>('/api/auth/me'),
 }
 
 export const mealPlanner = {
   list: () => api.get<MealPlan[]>('/api/meal-planner/plans'),
+  createPlan: (params?: { start_date?: string; days_count?: number }) =>
+    api.post<MealPlan>('/api/meal-planner/plans', params ?? {}),
   generate: (params: { days?: number; meals_per_day?: number; preferences?: string; start_date?: string }) =>
     api.post<MealPlan>('/api/meal-planner/generate', params),
+  deleteItem: (itemId: number) => api.delete<{ ok: boolean }>(`/api/meal-planner/items/${itemId}`),
+  addItem: (planId: number, item: { day_number: number; meal_name: string; description?: string; kcal?: number; protein?: number; fat?: number; carbs?: number }) =>
+    api.post<MealPlanItem>(`/api/meal-planner/plans/${planId}/items`, item),
+  updateItem: (itemId: number, data: { description?: string; kcal?: number; protein?: number; fat?: number; carbs?: number }) =>
+    api.patch<MealPlanItem>(`/api/meal-planner/items/${itemId}`, data),
+  markEaten: (itemId: number) => api.post<MealPlanItem>(`/api/meal-planner/items/${itemId}/eat`),
+  unmarkEaten: (itemId: number) => api.delete<MealPlanItem>(`/api/meal-planner/items/${itemId}/eat`),
+}
+
+export interface SavedItem {
+  id: number
+  name: string
+  item_type: 'food' | 'exercise'
+  kcal?: number
+  protein?: number
+  fat?: number
+  carbs?: number
+  duration_min?: number
+}
+
+export const library = {
+  list: () => api.get<SavedItem[]>('/api/library/'),
+  create: (item: Omit<SavedItem, 'id'>) => api.post<SavedItem>('/api/library/', item),
+  update: (id: number, item: Omit<SavedItem, 'id'>) => api.put<SavedItem>(`/api/library/${id}`, item),
+  delete: (id: number) => api.delete<{ ok: boolean }>(`/api/library/${id}`),
 }
 
 export const health = {

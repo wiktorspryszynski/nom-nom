@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage'
 import PlannerPage from './pages/PlannerPage'
 import MeasurementsPage from './pages/MeasurementsPage'
 import ProfilePage from './pages/ProfilePage'
+import PrivacyDataPage from './pages/PrivacyDataPage'
 import NotFoundPage from './pages/NotFoundPage'
 import GitHubCallbackPage from './pages/GitHubCallbackPage'
 import DemoLimitModal from './components/DemoLimitModal'
@@ -37,6 +38,7 @@ function AppShell() {
             <Route path="/planner"      element={<PlannerPage />} />
             <Route path="/measurements" element={<MeasurementsPage />} />
             <Route path="/profile"      element={<ProfilePage />} />
+            <Route path="/profile/privacy" element={<PrivacyDataPage />} />
             <Route path="*"             element={<NotFoundPage />} />
           </>
         ) : (

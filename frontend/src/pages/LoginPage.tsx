@@ -20,7 +20,6 @@ function GitHubButton() {
     `&scope=user:email` +
     `&login=`
 
-
   return (
     <a
       href={href}

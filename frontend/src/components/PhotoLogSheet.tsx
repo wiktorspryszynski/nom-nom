@@ -29,6 +29,7 @@ async function resizeImage(file: File, maxPx = 1024): Promise<Blob> {
 interface ParsedFood {
   name: string
   description: string
+  serving_size?: string
   kcal: number
   protein: number
   fat: number
@@ -62,22 +63,33 @@ function MacroChip({ label, value, unit, color, onChange }: {
 }
 
 export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [preview, setPreview] = useState<string | null>(null)
   const [status, setStatus] = useState<'analyzing' | 'result' | 'error'>('analyzing')
   const [food, setFood] = useState<ParsedFood | null>(null)
+  const [originalFood, setOriginalFood] = useState<ParsedFood | null>(null)
+  const [portion, setPortion] = useState(1.0)
   const [errorMsg, setErrorMsg] = useState('')
   const [saving, setSaving] = useState(false)
-  const prevFileRef = useRef<File | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const analyzeKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!file || file === prevFileRef.current) return
-    prevFileRef.current = file
+    if (!file) {
+      analyzeKeyRef.current = null
+      return
+    }
+
+    const analyzeKey = `${file.name}:${file.size}:${file.lastModified}:${lang}`
+    if (analyzeKey === analyzeKeyRef.current) return
+    analyzeKeyRef.current = analyzeKey
 
     const url = URL.createObjectURL(file)
     setPreview(url)
     setStatus('analyzing')
     setFood(null)
+    setOriginalFood(null)
+    setPortion(1.0)
     setErrorMsg('')
 
     const token = localStorage.getItem('nom_token')
@@ -87,7 +99,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
       .then(resizedBlob => {
         const formData = new FormData()
         formData.append('file', resizedBlob, 'photo.jpg')
-        return fetch('/api/tracker/log/photo', {
+        return fetch(`/api/tracker/log/photo?language=${lang}`, {
           method: 'POST',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData,
@@ -102,6 +114,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
       })
       .then((data: ParsedFood) => {
         setFood(data)
+        setOriginalFood(data)
         setStatus('result')
       })
       .catch(err => {
@@ -110,7 +123,20 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
       })
 
     return () => URL.revokeObjectURL(url)
-  }, [file])
+  }, [file, lang, retryCount])
+
+  const applyPortion = (p: number) => {
+    if (!originalFood) return
+    const clamped = Math.max(0.05, p)
+    setPortion(clamped)
+    setFood(f => f ? {
+      ...f,
+      kcal: Math.round(originalFood.kcal * clamped),
+      protein: Math.round(originalFood.protein * clamped * 10) / 10,
+      fat: Math.round(originalFood.fat * clamped * 10) / 10,
+      carbs: Math.round(originalFood.carbs * clamped * 10) / 10,
+    } : f)
+  }
 
   const handleSave = async () => {
     if (!food) return
@@ -194,7 +220,10 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
               <div>
                 <p className="text-sm font-bold text-red-500">{errorMsg}</p>
                 <button
-                  onClick={() => { prevFileRef.current = null; if (file) { prevFileRef.current = null; setStatus('analyzing'); } }}
+                  onClick={() => {
+                    analyzeKeyRef.current = null
+                    setRetryCount(c => c + 1)
+                  }}
                   className="flex items-center gap-1 text-xs font-bold text-red-400 mt-2 cursor-pointer"
                 >
                   <RotateCcw size={12} /> {t('photoLogRetry')}
@@ -229,6 +258,38 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
                              text-base px-3 py-2.5 outline-none focus:border-lily/50 transition-colors"
                 />
                 <p className="text-xs text-lily/40 mt-1.5 font-semibold">{food.description}</p>
+                {food.serving_size && (
+                  <p className="text-xs text-lily/50 mt-0.5 font-bold">{food.serving_size}</p>
+                )}
+              </div>
+
+              {/* Portion */}
+              <div>
+                <label className="text-[10px] font-extrabold text-lily/40 uppercase tracking-widest">{t('photoLogPortion')}</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  {([0.25, 0.5, 0.75, 1] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => applyPortion(p)}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold border-[2px] transition-colors cursor-pointer
+                        ${Math.abs(portion - p) < 0.01
+                          ? 'bg-lily text-primary border-lily'
+                          : 'bg-transparent text-lily/50 border-lily/20 hover:border-lily/40'}`}
+                    >
+                      {p === 0.25 ? '¼' : p === 0.5 ? '½' : p === 0.75 ? '¾' : '1×'}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    value={portion}
+                    step="0.1"
+                    min="0.05"
+                    onChange={e => applyPortion(parseFloat(e.target.value) || 1)}
+                    className="w-16 text-center font-extrabold text-lily text-sm bg-lily/6 border-[2px] border-lily/20
+                               rounded-xl py-1.5 outline-none focus:border-lily/50 transition-colors"
+                  />
+                  <span className="text-xs font-bold text-lily/40">×</span>
+                </div>
               </div>
 
               {/* Kcal */}
@@ -239,7 +300,8 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
                     type="number"
                     value={food.kcal}
                     onChange={e => setFood(f => f ? { ...f, kcal: parseInt(e.target.value) || 0 } : f)}
-                    className="w-20 text-right font-extrabold text-lily text-xl bg-transparent outline-none"
+                    className="w-24 text-right font-extrabold text-lily text-xl bg-white/60 border-[2px] border-lily/20
+                               rounded-xl px-2 py-1 outline-none focus:border-lily/50 transition-colors"
                   />
                   <span className="text-sm font-bold text-lily/60">kcal</span>
                 </div>

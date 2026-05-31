@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, model_validator
+from datetime import date
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 
 class RegisterRequest(BaseModel):
@@ -9,6 +10,22 @@ class RegisterRequest(BaseModel):
     # github_id is set when registering via GitHub OAuth
     github_id: str | None = None
     birth_date: str | None = None
+
+    @field_validator('birth_date')
+    @classmethod
+    def validate_birth_date(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        try:
+            parsed = date.fromisoformat(v)
+        except ValueError:
+            raise ValueError('birth_date must be a valid ISO date (YYYY-MM-DD)')
+        today = date.today()
+        if parsed >= today:
+            raise ValueError('birth_date must be in the past')
+        if parsed.year < today.year - 120:
+            raise ValueError('birth_date is too far in the past')
+        return v
     sex: str
     height_cm: float
     weight_kg: float

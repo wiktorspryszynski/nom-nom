@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Utensils, Dumbbell, ChevronRight, Flame, Droplets, Beef,
-  Send, CalendarDays, Camera, Loader2, Trash2,
+  Send, CalendarDays, Camera, Loader2, Plus,
 } from 'lucide-react'
 import BottomNav from '../components/BottomNav'
 import PhotoLogSheet from '../components/PhotoLogSheet'
+import EntryFormSheet from '../components/EntryFormSheet'
+import { EntryRow } from '../components/EntryRow'
 import { useLanguage } from '../context/LanguageContext'
-import { tracker, type DailyData, type DailyEntry, ApiError } from '../lib/api'
+import { tracker, mealPlanner, type DailyData, type DailyEntry, type MealPlan, type MealPlanItem, ApiError } from '../lib/api'
 import {
   NOMNOM_SMILING, NOMNOM_HAPPY, NOMNOM_SLIGHT_SMILE,
   NOMNOM_BEHIND, NOMNOM_BEHIND_QUESTION,
@@ -73,7 +75,7 @@ function MacroBar({ label, eaten, goal, color, icon: Icon }: {
       <div className="flex-1 h-3 bg-lily/10 rounded-full overflow-hidden">
         <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs font-bold text-lily/60 w-16 text-right shrink-0">{eaten} / {goal} g</span>
+      <span className="text-xs font-bold text-lily/60 w-18 text-right shrink-0">{eaten} / {goal} g</span>
     </div>
   )
 }
@@ -166,7 +168,7 @@ function QuickLogWidget({
         <img src={NOMNOM_EXCERCISE_AND_SNACK} alt="" aria-hidden className="w-8 h-8 object-contain pointer-events-none select-none" />
         <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">{t('dashboardQuickLog')}</h2>
         {!aiAvailable && (
-          <span className="ml-auto text-[10px] font-bold text-orange-500 bg-orange-50 rounded-lg px-2 py-0.5">AI offline</span>
+          <span className="ml-auto text-[10px] font-bold text-orange-500 bg-orange-50 rounded-lg px-2 py-0.5">{t('dashboardAiOffline')}</span>
         )}
       </div>
       <div className="flex gap-2">
@@ -201,7 +203,7 @@ function QuickLogWidget({
         <button
           onClick={mode === 'food' ? onCamera : undefined}
           disabled={mode === 'exercise' || !aiAvailable}
-          title={!aiAvailable ? 'AI unavailable — use text entry' : undefined}
+          title={!aiAvailable ? t('dashboardAiUnavailableTitle') : undefined}
           className={`w-11 h-11 bg-white border-[2px] rounded-xl flex items-center justify-center shrink-0 transition-all ${
             mode === 'exercise' || !aiAvailable
               ? 'border-lily/10 opacity-30 cursor-not-allowed'
@@ -228,38 +230,28 @@ function QuickLogWidget({
   )
 }
 
-function EntryRow({ entry, onDelete }: { entry: DailyEntry; onDelete?: (id: number) => void }) {
-  const isExercise = entry.type === 'exercise'
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-lily/10 last:border-0 group">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isExercise ? 'bg-[#3ec9a7]/15' : 'bg-primary/30'}`}>
-        {isExercise
-          ? <Dumbbell size={17} className="text-[#3ec9a7]" strokeWidth={2} />
-          : <Utensils size={17} className="text-lily" strokeWidth={2} />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-lily truncate">{entry.name}</p>
-        <p className="text-xs font-semibold text-lily/40">{entry.time}</p>
-      </div>
-      <span className={`text-sm font-extrabold shrink-0 ${entry.kcal < 0 ? 'text-[#3ec9a7]' : 'text-lily'}`}>
-        {entry.kcal > 0 ? '+' : ''}{entry.kcal} kcal
-      </span>
-      {onDelete && entry.type === 'food' && (
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-lily/30 hover:text-red-400 cursor-pointer shrink-0"
-          aria-label="Delete entry"
-        >
-          <Trash2 size={14} />
-        </button>
-      )}
-    </div>
-  )
-}
-
 function todayLabel(lang: string) {
   return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })
     .format(new Date()).replace(/^\w/, c => c.toUpperCase())
+}
+
+function parseDateOnly(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function getTodayPlanItems(plans: MealPlan[]): MealPlanItem[] {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (const plan of plans) {
+    const start = parseDateOnly(plan.start_date)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + plan.days_count - 1)
+    if (today < start || today > end) continue
+    const dayNumber = Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1
+    return plan.items.filter(i => i.day_number === dayNumber)
+  }
+  return []
 }
 
 const EMPTY_DAILY: DailyData = {
@@ -285,15 +277,19 @@ export default function DashboardPage() {
   const nomTimers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const [daily, setDaily] = useState<DailyData>(EMPTY_DAILY)
+  const [todayPlanItems, setTodayPlanItems] = useState<MealPlanItem[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [aiAvailable, setAiAvailable] = useState(true)
   const [sendError, setSendError] = useState('')
+  const [showEntryForm, setShowEntryForm] = useState(false)
+  const [editEntry, setEditEntry] = useState<DailyEntry | undefined>()
 
   const fetchDaily = useCallback(async () => {
     try {
-      const data = await tracker.getDaily()
+      const [data, plans] = await Promise.all([tracker.getDaily(), mealPlanner.list()])
       setDaily(data)
+      setTodayPlanItems(getTodayPlanItems(plans))
     } catch {
       // keep empty state
     } finally {
@@ -352,11 +348,13 @@ export default function DashboardPage() {
     } catch (err) {
       if (err instanceof ApiError && (err.detail === 'AI_UNAVAILABLE' || err.status === 503)) {
         setAiAvailable(false)
-        setSendError('AI unavailable — try USDA search or enter manually')
+        setSendError(t('dashboardAiUnavailableError'))
       } else if (err instanceof ApiError && (err.detail === 'AI_QUOTA_EXCEEDED' || err.status === 429)) {
-        setSendError('Daily AI limit reached — try again tomorrow')
+        setSendError(t('dashboardAiQuotaError'))
+      } else if (err instanceof ApiError && err.detail === 'AI_PARSE_ERROR') {
+        setSendError(t('dashboardAiParseError'))
       } else {
-        setSendError('Could not parse entry. Try being more specific.')
+        setSendError(t('dashboardParseError'))
       }
     } finally {
       setSending(false)
@@ -370,9 +368,10 @@ export default function DashboardPage() {
     } catch { /* silent */ }
   }
 
-  const handleDeleteEntry = async (id: number) => {
+  const handleDeleteEntry = async (id: number, type: 'food' | 'exercise') => {
     try {
-      await tracker.deleteLog(id)
+      if (type === 'exercise') await tracker.deleteExercise(id)
+      else await tracker.deleteLog(id)
       setDaily(d => ({ ...d, entries: d.entries.filter(e => e.id !== id) }))
     } catch { /* silent */ }
   }
@@ -380,6 +379,16 @@ export default function DashboardPage() {
   const handlePhotoSaved = () => {
     setPhotoFile(null)
     fetchDaily()
+  }
+
+  const handleEditEntry = (entry: DailyEntry) => {
+    setEditEntry(entry)
+    setShowEntryForm(true)
+  }
+
+  const handleAddEntry = () => {
+    setEditEntry(undefined)
+    setShowEntryForm(true)
   }
 
   const net = daily.kcal_consumed - daily.kcal_burned
@@ -444,9 +453,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ── Water ── */}
-            <WaterWidget glasses={daily.water_glasses} goal={daily.water_goal} onSave={handleWater} />
-
             {/* ── Quick log — full width ── */}
             <div className="sm:col-span-2 space-y-2">
               <QuickLogWidget
@@ -459,6 +465,9 @@ export default function DashboardPage() {
                 <p className="text-xs font-bold text-orange-500 text-center">{sendError}</p>
               )}
             </div>
+            
+            {/* ── Water ── */}
+            <WaterWidget glasses={daily.water_glasses} goal={daily.water_goal} onSave={handleWater} />
 
             {/* ── Today's plan stub ── */}
             <div className="bg-white rounded-2xl border-[2px] border-lily/15 p-4">
@@ -471,9 +480,23 @@ export default function DashboardPage() {
                   {t('dashboardPlannerLink')} <ChevronRight size={12} />
                 </a>
               </div>
-              <a href="/planner" className="block text-sm font-semibold text-lily/40 hover:text-lily/70 transition-colors text-center py-3">
-                {t('dashboardPlannerLink')} →
-              </a>
+              {todayPlanItems.length === 0 ? (
+                <p className="text-sm font-semibold text-lily/40 text-center py-3">{t('dashboardNoPlanToday')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {todayPlanItems.map(item => (
+                    <div key={item.id} className="rounded-xl bg-lily/5 px-3 py-2">
+                      <p className="text-[10px] font-extrabold text-lily/35 uppercase tracking-widest">{item.meal_name}</p>
+                      {item.description && (
+                        <p className="text-sm font-semibold text-lily/70 leading-snug">{item.description}</p>
+                      )}
+                      {item.kcal != null && (
+                        <p className="text-xs font-bold text-lily/40 mt-0.5">{item.kcal} kcal</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── Log entries ── */}
@@ -483,13 +506,20 @@ export default function DashboardPage() {
                   <img src={NOMNOM_EXCERCISING} alt="" aria-hidden className="w-7 h-7 object-contain pointer-events-none select-none" />
                   <h2 className="text-sm font-extrabold text-lily/60 uppercase tracking-widest">{t('dashboardTodayEntries')}</h2>
                 </div>
+                <button
+                  onClick={handleAddEntry}
+                  className="w-8 h-8 rounded-xl bg-lily/10 flex items-center justify-center text-lily/60 hover:bg-lily/20 transition-colors cursor-pointer"
+                  aria-label={t('dashboardAddEntry')}
+                >
+                  <Plus size={16} />
+                </button>
               </div>
               <div className="bg-white rounded-2xl shadow-md border-[2px] border-lily/15 px-4">
                 {daily.entries.length === 0 ? (
                   <p className="text-center text-sm font-semibold text-lily/30 py-6">{t('dashboardNoEntries')}</p>
                 ) : (
                   daily.entries.map(e => (
-                    <EntryRow key={`${e.type}-${e.id}`} entry={e} onDelete={handleDeleteEntry} />
+                    <EntryRow key={`${e.type}-${e.id}`} entry={e} onDelete={id => handleDeleteEntry(id, e.type)} onEdit={handleEditEntry} />
                   ))
                 )}
               </div>
@@ -514,6 +544,15 @@ export default function DashboardPage() {
         file={photoFile}
         onClose={handlePhotoSaved}
       />
+
+      {showEntryForm && (
+        <EntryFormSheet
+          entry={editEntry}
+          context="dashboard"
+          onClose={() => setShowEntryForm(false)}
+          onSaved={() => { setShowEntryForm(false); fetchDaily() }}
+        />
+      )}
 
       <BottomNav />
     </div>

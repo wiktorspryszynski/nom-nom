@@ -47,28 +47,72 @@ class SaveLogRequest(BaseModel):
 # Prompts (static — perfect candidates for prompt caching)
 # ---------------------------------------------------------------------------
 
-_VISION_PROMPT = (
-    "Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
-    '{"name":"short Polish name (max 4 words)","description":"one Polish sentence describing the dish",'
-    '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
-    "Estimate a realistic single serving. If this is not a food photo return:\n"
-    '{"error":"Nie rozpoznano jedzenia na zdjęciu"}'
-)
-
-_TEXT_PROMPT = (
-    "Analyze this food or exercise description. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
-    '{"name":"short Polish name (max 4 words)","description":"one Polish sentence",'
-    '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1,'
-    '"is_exercise":boolean}\n\n'
-    "For exercise entries set protein/fat/carbs to 0 and kcal to calories burned (positive number).\n"
-    "If you cannot parse this as food or exercise return:\n"
-    '{"error":"Nie rozpoznano posiłku ani aktywności"}'
-)
+def _build_vision_prompt(language: str) -> str:
+    is_polish = language == "pl"
+    name_lang = "Polish" if is_polish else "English"
+    not_food_error = (
+        "Nie rozpoznano jedzenia na zdjęciu"
+        if is_polish
+        else "No food detected in the photo"
+    )
+    serving_examples = (
+        "'1 plaster', '250 g', '1 szklanka', '2 kawałki'"
+        if is_polish
+        else "'1 slice', '250 g', '1 cup', '2 pieces'"
+    )
+    return (
+        f"Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
+        f'{{"name":"short {name_lang} name (max 4 words)","description":"one {name_lang} sentence describing the dish",'
+        f'"serving_size":"visible portion estimate in {name_lang} (e.g. {serving_examples})",'
+        '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
+        "Estimate for the portion actually visible in the photo. If this is not a food photo return:\n"
+        f'{{"error":"{not_food_error}"}}'
+    )
 
 _ALLOWED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
-# Typed as list[Any] so Pylance accepts cache_control (not in TextBlockParam TypedDict)
-_TEXT_SYSTEM: list[Any] = [{"type": "text", "text": _TEXT_PROMPT, "cache_control": {"type": "ephemeral"}}]
+
+def _build_text_system(language: str) -> list[Any]:
+    """Build a cached text-parsing system prompt for the given language."""
+    is_polish = language == "pl"
+    lang_note = "Polish" if is_polish else "English"
+    
+    polish_examples = """
+        'bułka z pastą jajeczną -> {"name":"bułka z pastą jajeczną","kcal":310,"protein":12,"fat":14,"carbs":32,"confidence":0.85,"is_exercise":false}\n'
+        '2 jajka sadzone -> {"name":"2 jajka sadzone","kcal":180,"protein":12,"fat":14,"carbs":1,"confidence":0.95,"is_exercise":false}\n'
+        'schabowy z ziemniakami -> {"name":"schabowy z ziemniakami","kcal":720,"protein":42,"fat":32,"carbs":58,"confidence":0.8,"is_exercise":false}\n'
+        '30 min bieganie -> {"name":"bieganie 30 min","kcal":280,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
+        """
+        
+    english_examples = """
+        'egg salad sandwich -> {"name":"egg salad sandwich","kcal":350,"protein":14,"fat":18,"carbs":30,"confidence":0.85,"is_exercise":false}\n'
+        'grilled chicken breast -> {"name":"grilled chicken breast","kcal":165,"protein":31,"fat":4,"carbs":0,"confidence":0.9,"is_exercise":false}\n'
+        'spaghetti with marinara -> {"name":"spaghetti with marinara","kcal":400,"protein":12,"fat":10,"carbs":60,"confidence":0.8,"is_exercise":false}\n'
+        '30 min running -> {"name":"running 30 min","kcal":300,"protein":0,"fat":0,"carbs":0,"confidence":0.9,"is_exercise":true}\n\n'
+        """
+    
+    parse_error = (
+        "Nie rozpoznano posiłku ani aktywności"
+        if is_polish
+        else "Could not recognize meal or activity"
+    )
+
+    prompt = (
+        f"You are a nutrition assistant. The user's language is {lang_note}.\n"
+        "Analyze the food or exercise description and return ONLY a raw JSON object "
+        "(no markdown, no code fences) with these exact keys:\n"
+        '{"name":"short name in user\'s language (max 5 words)",'
+        '"description":"one sentence in user\'s language",'
+        '"kcal":integer,"protein":float,"fat":float,"carbs":float,'
+        '"confidence":float 0-1,"is_exercise":boolean}\n\n'
+        "Estimate for a single typical serving unless an explicit quantity is stated. "
+        "For Polish inputs use Central-European portion sizes.\n\n"
+        "Examples:\n"
+        + (polish_examples if is_polish else english_examples) +
+        "For exercise: set protein/fat/carbs to 0, kcal = calories burned (positive number).\n"
+        f'If unparseable: {{"error":"{parse_error}"}}'
+    )
+    return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
 
 
 # ---------------------------------------------------------------------------
@@ -114,14 +158,15 @@ def _today_start_utc() -> datetime:
     return datetime(today.year, today.month, today.day, tzinfo=timezone.utc).replace(tzinfo=None)
 
 
-def _call_claude_haiku(entry_text: str) -> dict:
-    """Call Claude Haiku with cached system prompt. Raises HTTPException 503 if credits exhausted."""
+def _call_claude_text(entry_text: str, language: str = "pl", model: str = "claude-haiku-4-5-20251001") -> dict:
+    """Parse a food/exercise description using a Claude text model."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    system = _build_text_system(language)
     try:
         message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=256,
-            system=_TEXT_SYSTEM,
+            model=model,
+            max_tokens=512,
+            system=system,
             messages=[{"role": "user", "content": entry_text}],
         )
     except anthropic.APIStatusError as e:
@@ -130,24 +175,31 @@ def _call_claude_haiku(entry_text: str) -> dict:
         raise
     try:
         block = message.content[0]
-        return json.loads(block.text)  # type: ignore[union-attr]
+        text = block.text.strip()  # type: ignore[union-attr]
+        # Strip markdown code fences the model sometimes adds despite instructions
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+        return json.loads(text)
     except (json.JSONDecodeError, IndexError, AttributeError):
-        raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
+        raise HTTPException(status_code=422, detail="AI_PARSE_ERROR")
 
 
-def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
-    """Call Claude Sonnet Vision with cached text prompt. Raises HTTPException 503 if credits exhausted."""
+def _call_claude_vision(b64: str, media_type: str, language: str = "pl", model: str = "claude-sonnet-4-6") -> dict:
+    """Analyze a food photo using a Claude vision model."""
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     vision_messages: list[Any] = [{
         "role": "user",
         "content": [
-            {"type": "text", "text": _VISION_PROMPT, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": _build_vision_prompt(language), "cache_control": {"type": "ephemeral"}},
             {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
         ],
     }]
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=model,
             max_tokens=512,
             messages=vision_messages,
         )
@@ -157,18 +209,31 @@ def _call_claude_sonnet_vision(b64: str, media_type: str) -> dict:
         raise
     try:
         block = message.content[0]
-        return json.loads(block.text)  # type: ignore[union-attr]
+        text = block.text.strip()  # type: ignore[union-attr]
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+        return json.loads(text)
     except (json.JSONDecodeError, IndexError, AttributeError):
-        raise HTTPException(status_code=422, detail="Nie udało się przetworzyć odpowiedzi AI")
+        raise HTTPException(status_code=422, detail="AI_PARSE_ERROR")
 
 
 async def _try_usda_first(text: str) -> dict | None:
     """Return nutrition dict if USDA finds a confident match for a short query, else None."""
-    if not settings.usda_api_key:
+    if not settings.usda_available:
+        return None
+    # Skip non-ASCII queries — USDA is an English database; Polish/accented text returns garbage
+    if not text.isascii():
         return None
     # Only attempt for short queries (≤4 words) — likely raw/simple foods
     words = text.strip().split()
     if len(words) > 4:
+        return None
+    # Only match against words of ≥3 chars to avoid short words ("a", "z", "w") false-matching
+    meaningful_words = [w for w in words if len(w) >= 3]
+    if not meaningful_words:
         return None
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -189,7 +254,7 @@ async def _try_usda_first(text: str) -> dict | None:
         top = foods[0]
         # Confidence check: at least one query word appears in the result name
         description = top.get("description", "").lower()
-        if not any(w.lower() in description for w in words):
+        if not any(w.lower() in description for w in meaningful_words):
             return None
         nutrients = {n["nutrientName"]: n["value"] for n in top.get("foodNutrients", [])}
         return {
@@ -351,6 +416,26 @@ def save_log(
     return {"id": entry.id, "ok": True}
 
 
+@router.put("/log/{entry_id}")
+def update_log(
+    entry_id: int,
+    body: SaveLogRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update an existing food log entry."""
+    entry = db.query(FoodLog).filter(FoodLog.id == entry_id, FoodLog.user_id == current_user.id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry.description = body.description
+    entry.kcal = body.kcal
+    entry.protein = body.protein
+    entry.fat = body.fat
+    entry.carbs = body.carbs
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/log/{entry_id}")
 def delete_log(
     entry_id: int,
@@ -359,6 +444,21 @@ def delete_log(
 ):
     """Delete a food log entry."""
     entry = db.query(FoodLog).filter(FoodLog.id == entry_id, FoodLog.user_id == current_user.id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/exercise/{entry_id}")
+def delete_exercise(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete an exercise log entry."""
+    entry = db.query(ExerciseLog).filter(ExerciseLog.id == entry_id, ExerciseLog.user_id == current_user.id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     db.delete(entry)
@@ -416,10 +516,13 @@ async def log_text(
 
     # AI path: quota guard + Haiku call
     _check_ai_quota(current_user, db)
-    result = _call_claude_haiku(body.text)
+    result = _call_claude_text(body.text, language=current_user.language or "pl")
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
+
+    if result.get("confidence", 1.0) < 0.45:
+        raise HTTPException(status_code=422, detail="CONFIDENCE_TOO_LOW")
 
     return result
 
@@ -427,6 +530,7 @@ async def log_text(
 @router.post("/log/photo")
 async def log_photo(
     file: UploadFile = File(...),
+    language: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -446,8 +550,9 @@ async def log_photo(
     if media_type not in _ALLOWED_MEDIA_TYPES:
         media_type = "image/jpeg"
 
+    effective_lang = language if language in ("pl", "en") else (current_user.language or "pl")
     b64 = base64.standard_b64encode(contents).decode()
-    result = _call_claude_sonnet_vision(b64, media_type)
+    result = _call_claude_vision(b64, media_type, language=effective_lang)
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
@@ -461,7 +566,7 @@ async def search_food(
     current_user: User = Depends(get_current_user),
 ):
     """USDA FoodData Central text search — used as AI fallback."""
-    if not settings.usda_api_key:
+    if not settings.usda_available:
         raise HTTPException(status_code=503, detail="USDA_UNAVAILABLE")
 
     url = "https://api.nal.usda.gov/fdc/v1/foods/search"

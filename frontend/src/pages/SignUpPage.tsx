@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NOMNOM_SMILING, NOMNOM_SLIGHT_SMILE, NOMNOM_EATING_SALAD } from '../assets'
 import { useLanguage } from '../context/LanguageContext'
@@ -83,6 +83,135 @@ function PlainInput(props: React.InputHTMLAttributes<HTMLInputElement> & { borde
   )
 }
 
+function DateInput({
+  value,
+  onChange,
+  borderRadius,
+}: {
+  value: string
+  onChange: (iso: string) => void
+  borderRadius: string
+}) {
+  const [d, setD] = useState(value ? value.slice(8, 10) : '')
+  const [m, setM] = useState(value ? value.slice(5, 7) : '')
+  const [y, setY] = useState(value ? value.slice(0, 4) : '')
+  const dayRef = useRef<HTMLInputElement>(null)
+  const monthRef = useRef<HTMLInputElement>(null)
+  const yearRef = useRef<HTMLInputElement>(null)
+
+  const emit = (day: string, month: string, year: string) => {
+    if (!day || !month || year.length < 4) { onChange(''); return }
+    const dd = day.padStart(2, '0')
+    const mm = month.padStart(2, '0')
+    const dNum = parseInt(day, 10)
+    const mNum = parseInt(month, 10)
+    const yNum = parseInt(year, 10)
+
+    // Date constructor overflow detection: Feb 30 rolls forward → output ≠ input → invalid
+    const date = new Date(yNum, mNum - 1, dNum)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const isValidCalendar = date.getFullYear() === yNum && date.getMonth() === mNum - 1 && date.getDate() === dNum
+    const isInPast = date < today
+    const isWithin120Years = yNum >= today.getFullYear() - 120
+
+    if (isValidCalendar && isInPast && isWithin120Years) {
+      onChange(`${year}-${mm}-${dd}`)
+    } else {
+      onChange('')
+    }
+  }
+
+  // Returns the number of days in a given month/year (uses Date overflow trick)
+  const daysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate()
+
+  const clampDay = (day: string, month: string, year: string): string => {
+    if (day.length !== 2) return day
+    const mNum = parseInt(month, 10)
+    const yNum = year.length === 4 ? parseInt(year, 10) : 2001 // non-leap default so Feb 29 requires confirmed leap year
+    const maxDay = mNum >= 1 && mNum <= 12 ? daysInMonth(mNum, yNum) : 31
+    return String(Math.min(parseInt(day, 10), maxDay))
+  }
+
+  const handleDay = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    v = clampDay(v, m, y)
+    setD(v)
+    if (v.length === 2) monthRef.current?.focus()
+    emit(v, m, y)
+  }
+
+  const handleMonth = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+    if (v.length === 2) v = String(Math.min(parseInt(v, 10), 12))
+    // Re-clamp day against the new month (e.g. switching to Feb with day=31 → 28)
+    const newD = clampDay(d, v, y)
+    if (newD !== d) setD(newD)
+    setM(v)
+    if (v.length === 2) yearRef.current?.focus()
+    emit(newD, v, y)
+  }
+
+  const handleYear = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let v = e.target.value.replace(/\D/g, '').slice(0, 4)
+    if (v.length === 4) v = String(Math.min(parseInt(v, 10), new Date().getFullYear()))
+    // Re-clamp day when year completes — catches Feb 29 on non-leap years
+    const newD = clampDay(d, m, v)
+    if (newD !== d) setD(newD)
+    setY(v)
+    emit(newD, m, v)
+  }
+
+  const handleContainerClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT') return
+    if (!d) dayRef.current?.focus()
+    else if (!m) monthRef.current?.focus()
+    else yearRef.current?.focus()
+  }
+
+  const inputClass = 'bg-transparent text-lily placeholder:text-lily/30 text-base font-semibold outline-none text-center'
+
+  return (
+    <div
+      className="w-full bg-ivory flex items-center px-4 py-3 gap-1 cursor-text"
+      style={{ borderRadius }}
+      onClick={handleContainerClick}
+    >
+      <input
+        ref={dayRef}
+        type="text"
+        inputMode="numeric"
+        value={d}
+        onChange={handleDay}
+        placeholder="DD"
+        maxLength={2}
+        className={`w-9 ${inputClass}`}
+      />
+      <span className="text-lily/30 font-bold select-none">/</span>
+      <input
+        ref={monthRef}
+        type="text"
+        inputMode="numeric"
+        value={m}
+        onChange={handleMonth}
+        placeholder="MM"
+        maxLength={2}
+        className={`w-9 ${inputClass}`}
+      />
+      <span className="text-lily/30 font-bold select-none">/</span>
+      <input
+        ref={yearRef}
+        type="text"
+        inputMode="numeric"
+        value={y}
+        onChange={handleYear}
+        placeholder="YYYY"
+        maxLength={4}
+        className={`w-14 ${inputClass}`}
+      />
+    </div>
+  )
+}
+
 function StepDots({ current }: { current: number }) {
   return (
     <div className="flex gap-2 items-center">
@@ -155,7 +284,7 @@ export default function SignUpPage() {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
   const [showCalcModal, setShowCalcModal] = useState(false)
-  const [calorieTarget, setCalorieTarget] = useState<number | null>(null)
+  const [calorieTarget, setCalorieTarget] = useState('')
 
   // GitHub OAuth path
   const [githubId] = useState<string | null>(() => {
@@ -219,7 +348,7 @@ export default function SignUpPage() {
     setStatus('loading')
     setError('')
     const tdee = Number(data.currentIntake)
-    const target = calorieTarget ?? recommendation?.kcal ?? tdee
+    const target = calorieTarget ? Number(calorieTarget) : recommendation?.kcal ?? tdee
     try {
       const body: Record<string, unknown> = {
         name: data.name,
@@ -289,6 +418,11 @@ export default function SignUpPage() {
     const recommended = tdee - dailyDelta
     return { kcal: recommended, delta: dailyDelta }
   })()
+
+  const effectiveTarget = calorieTarget
+    ? Number(calorieTarget)
+    : recommendation?.kcal ?? (tdee || 0)
+  const tooLow = effectiveTarget > 0 && effectiveTarget < MIN_KCAL
 
   return (
     <div className="min-h-dvh bg-primary flex items-center justify-center px-6 py-10">
@@ -386,12 +520,9 @@ export default function SignUpPage() {
               r2="12px 6px 16px 8px / 6px 14px 8px 16px"
               r3="4px 18px 8px 12px / 18px 4px 12px 8px"
             >
-              <PlainInput
-                type="date"
+              <DateInput
                 value={data.birthDate}
-                onChange={set('birthDate')}
-                max={new Date().toISOString().slice(0, 10)}
-                min={`${new Date().getFullYear() - 120}-01-01`}
+                onChange={iso => setData(d => ({ ...d, birthDate: iso }))}
                 borderRadius="8px 14px 4px 18px / 14px 8px 18px 4px"
               />
             </InputWrap>
@@ -592,34 +723,54 @@ export default function SignUpPage() {
                 <p className="text-xs font-extrabold text-lily/50 uppercase tracking-widest">
                   {t('signupRecommendedIntakeLabel')}
                 </p>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-extrabold text-lily leading-none">
-                    {recommendation.kcal.toLocaleString()}
-                  </span>
-                  <span className="text-sm font-bold text-lily/50 pb-0.5">kcal</span>
-                  <span className="text-xs font-bold text-lily/40 pb-0.5 ml-1">
-                    {recommendation.delta > 0
-                      ? t('signupDeficitNote').replace('{kcal}', String(Math.abs(recommendation.delta)))
-                      : t('signupSurplusNote').replace('{kcal}', String(Math.abs(recommendation.delta)))}
-                  </span>
-                </div>
-                {recommendation.kcal < MIN_KCAL && (
-                  <p className="text-xs font-bold text-[#f7a84a]">{t('signupWarningTooLow')}</p>
-                )}
-                {calorieTarget !== recommendation.kcal && (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-extrabold text-lily leading-none">
+                      {recommendation.kcal.toLocaleString()}
+                    </span>
+                    <span className="text-sm font-bold text-lily/50 pb-0.5">kcal</span>
+                    <span className="text-xs font-bold text-lily/40 pb-0.5 ml-1">
+                      {recommendation.delta > 0
+                        ? t('signupDeficitNote').replace('{kcal}', String(Math.abs(recommendation.delta)))
+                        : t('signupSurplusNote').replace('{kcal}', String(Math.abs(recommendation.delta)))}
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setCalorieTarget(recommendation.kcal)}
-                    className="self-start text-xs font-bold text-lily/60 hover:text-lily transition-colors cursor-pointer underline underline-offset-2"
+                    onClick={() => setCalorieTarget(String(recommendation.kcal))}
+                    className="text-xs font-bold text-lily/60 hover:text-lily transition-colors cursor-pointer underline underline-offset-2 shrink-0"
                   >
                     {t('signupAcceptRecommendation')}
                   </button>
-                )}
-                {calorieTarget === recommendation.kcal && (
-                  <p className="text-xs font-bold text-[#3ec9a7]">✓ {t('signupAcceptRecommendation')}</p>
+                </div>
+                {recommendation.kcal < MIN_KCAL && (
+                  <p className="text-xs font-bold text-red-400">{t('signupWarningTooLow')}</p>
                 )}
               </div>
             )}
+
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-bold text-lily/50">{t('signupCustomTargetLabel')}</p>
+              <InputWrap
+                r1="6px 16px 4px 18px / 16px 6px 18px 4px"
+                r2="8px 12px 6px 14px / 12px 8px 14px 6px"
+                r3="4px 18px 10px 8px / 18px 4px 8px 10px"
+                borderColor="var(--color-ivory)"
+              >
+                <UnitInput
+                  placeholder={t('signupCustomTargetPlaceholder')}
+                  value={calorieTarget}
+                  onChange={e => setCalorieTarget(e.target.value)}
+                  min={1}
+                  max={10000}
+                  unit="kcal"
+                  borderRadius="6px 16px 4px 18px / 16px 6px 18px 4px"
+                />
+              </InputWrap>
+              {tooLow && (
+                <p className="text-xs font-bold text-red-400">{t('signupWarningTooLow')}</p>
+              )}
+            </div>
 
             {error && (
               <p className="text-center text-sm font-bold text-lily/80">{error}</p>
@@ -635,7 +786,7 @@ export default function SignUpPage() {
               </button>
               <button
                 type="submit"
-                disabled={status === 'loading'}
+                disabled={status === 'loading' || tooLow}
                 className="btn-fill flex-1 border-[3px] border-lily text-lily rounded-full py-3 text-base font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-default"
               >
                 {status === 'loading' ? t('signupCreating') : t('signupCreate')}

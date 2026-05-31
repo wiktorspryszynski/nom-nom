@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Target, LogOut, ChevronRight, Pencil, Check, Loader2, Zap } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 import BottomNav from '../components/BottomNav'
+import CalorieCalculatorModal from '../components/CalorieCalculatorModal'
+import CalorieTargetModal from '../components/CalorieTargetModal'
 import { profile, type UserProfile } from '../lib/api'
 import { NOMNOM_HAPPY } from '../assets'
 
@@ -75,6 +78,7 @@ function computeRecommendedProtein(weightKg: number, goalType: string): number {
 }
 
 export default function ProfilePage() {
+  const navigate = useNavigate()
   const { logout } = useAuth()
   const { t, lang, setLang } = useLanguage()
 
@@ -87,6 +91,8 @@ export default function ProfilePage() {
   const [weightGoal, setWeightGoal] = useState('')
   const [proteinGoal, setProteinGoal] = useState('')
   const [height, setHeight] = useState('')
+  const [showCalcModal, setShowCalcModal] = useState(false)
+  const [showTargetModal, setShowTargetModal] = useState(false)
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -222,6 +228,30 @@ export default function ProfilePage() {
           />
         </div>
 
+        {/* ── Calculate your calories ── */}
+        <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4 py-4">
+          <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest mb-3">
+            {t('profileCalcSection')}
+          </h2>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setShowCalcModal(true)}
+              className="flex-1 py-3 rounded-2xl border-[2px] border-lily text-sm font-bold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors"
+            >
+              {t('profileCalcCurrent')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTargetModal(true)}
+              disabled={!tdee}
+              className="flex-1 py-3 rounded-2xl border-[2px] border-lily text-sm font-bold text-lily cursor-pointer hover:bg-lily hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-default"
+            >
+              {t('profileCalcTarget')}
+            </button>
+          </div>
+        </div>
+
         {/* ── App section ── */}
         <div className="bg-white rounded-2xl border-[2px] border-lily/15 px-4">
           <h2 className="text-xs font-extrabold text-lily/50 uppercase tracking-widest pt-4 pb-2">{t('profileApp')}</h2>
@@ -244,7 +274,11 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <button className="w-full flex items-center justify-between py-3.5 cursor-pointer hover:text-lily/80 transition-colors">
+          <button
+            type="button"
+            onClick={() => navigate('/profile/privacy')}
+            className="w-full flex items-center justify-between py-3.5 cursor-pointer hover:text-lily/80 transition-colors"
+          >
             <span className="text-sm font-bold text-lily/70">{t('profilePrivacy')}</span>
             <ChevronRight size={14} className="text-lily/30" />
           </button>
@@ -262,6 +296,58 @@ export default function ProfilePage() {
       </div>
 
       <BottomNav />
+
+      {showTargetModal && (
+        <CalorieTargetModal
+          tdee={tdee ? Number(tdee) : null}
+          currentWeight={user?.weight_kg ?? null}
+          weightTarget={weightGoal ? Number(weightGoal) : null}
+          onConfirm={async kcal => {
+            setCalorieTarget(String(kcal))
+            setShowTargetModal(false)
+            setSaving(true)
+            try {
+              await profile.update({
+                calorie_target: kcal,
+                tdee_kcal: tdee ? Number(tdee) : undefined,
+                weight_target: weightGoal ? Number(weightGoal) : undefined,
+                protein_target: proteinGoal ? Number(proteinGoal) : undefined,
+                height_cm: height ? Number(height) : undefined,
+              })
+            } catch { /* silent */ } finally {
+              setSaving(false)
+            }
+          }}
+          onClose={() => setShowTargetModal(false)}
+        />
+      )}
+
+      {showCalcModal && (
+        <CalorieCalculatorModal
+          variant="dialog"
+          sex={(user?.sex as 'M' | 'F' | null) ?? null}
+          height={String(user?.height_cm ?? '')}
+          weight={String(user?.weight_kg ?? '')}
+          birthDate={user?.birth_date ?? ''}
+          onConfirm={async kcal => {
+            setTdee(String(kcal))
+            setShowCalcModal(false)
+            setSaving(true)
+            try {
+              await profile.update({
+                tdee_kcal: kcal,
+                calorie_target: calorieTarget ? Number(calorieTarget) : undefined,
+                weight_target: weightGoal ? Number(weightGoal) : undefined,
+                protein_target: proteinGoal ? Number(proteinGoal) : undefined,
+                height_cm: height ? Number(height) : undefined,
+              })
+            } catch { /* silent */ } finally {
+              setSaving(false)
+            }
+          }}
+          onClose={() => setShowCalcModal(false)}
+        />
+      )}
     </div>
   )
 }

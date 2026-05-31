@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models.meal_plan import MealPlan, MealPlanItem
+from app.models.food_log import FoodLog
+from app.models.meal_plan import EatenPlanItem, MealPlan, MealPlanItem
 from app.models.user import User
 from app.routers.auth import get_current_user
 from app.routers.tracker import _check_ai_quota
@@ -46,11 +47,58 @@ Rules:
 _PLAN_SYSTEM: list[Any] = [{"type": "text", "text": _PLAN_SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}]
 
 
+class AddItemRequest(BaseModel):
+    day_number: int
+    meal_name: str
+    description: str | None = None
+    kcal: int | None = None
+    protein: float | None = None
+    fat: float | None = None
+    carbs: float | None = None
+
+
+class UpdateItemRequest(BaseModel):
+    description: str | None = None
+    kcal: int | None = None
+    protein: float | None = None
+    fat: float | None = None
+    carbs: float | None = None
+
+
 class GenerateRequest(BaseModel):
     days: int = 7
     meals_per_day: int = 3
     preferences: str = ""
     start_date: date | None = None
+
+
+class CreatePlanRequest(BaseModel):
+    start_date: date | None = None
+    days_count: int = 7
+
+
+@router.post("/plans")
+def create_plan(
+    body: CreatePlanRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    start = body.start_date or date.today()
+    plan = MealPlan(
+        user_id=current_user.id,
+        start_date=start,
+        days_count=body.days_count,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return {
+        "id": plan.id,
+        "start_date": plan.start_date.isoformat(),
+        "days_count": plan.days_count,
+        "created_at": plan.created_at.isoformat(),
+        "items": [],
+    }
 
 
 @router.get("/plans")
@@ -68,26 +116,171 @@ def list_plans(
     result = []
     for plan in plans:
         items = db.query(MealPlanItem).filter(MealPlanItem.meal_plan_id == plan.id).all()
+        item_ids = [i.id for i in items]
+        eaten_ids = {
+            e.plan_item_id
+            for e in db.query(EatenPlanItem).filter(EatenPlanItem.plan_item_id.in_(item_ids)).all()
+        } if item_ids else set()
         result.append({
             "id": plan.id,
             "start_date": plan.start_date.isoformat(),
             "days_count": plan.days_count,
             "created_at": plan.created_at.isoformat(),
-            "items": [
-                {
-                    "id": i.id,
-                    "day_number": i.day_number,
-                    "meal_name": i.meal_name,
-                    "description": i.description,
-                    "kcal": i.kcal,
-                    "protein": i.protein,
-                    "fat": i.fat,
-                    "carbs": i.carbs,
-                }
-                for i in items
-            ],
+            "items": [_serialize_item(i, eaten=i.id in eaten_ids) for i in items],
         })
     return result
+
+
+def _serialize_item(i: MealPlanItem, eaten: bool = False) -> dict:
+    return {
+        "id": i.id,
+        "day_number": i.day_number,
+        "meal_name": i.meal_name,
+        "description": i.description,
+        "kcal": i.kcal,
+        "protein": i.protein,
+        "fat": i.fat,
+        "carbs": i.carbs,
+        "eaten": eaten,
+    }
+
+
+@router.patch("/items/{item_id}")
+def update_plan_item(
+    item_id: int,
+    body: UpdateItemRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    item = (
+        db.query(MealPlanItem)
+        .join(MealPlan, MealPlanItem.meal_plan_id == MealPlan.id)
+        .filter(MealPlanItem.id == item_id, MealPlan.user_id == current_user.id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if body.description is not None:
+        item.description = body.description
+    if body.kcal is not None:
+        item.kcal = body.kcal
+    if body.protein is not None:
+        item.protein = body.protein
+    if body.fat is not None:
+        item.fat = body.fat
+    if body.carbs is not None:
+        item.carbs = body.carbs
+    db.commit()
+    db.refresh(item)
+    return _serialize_item(item)
+
+
+@router.delete("/items/{item_id}")
+def delete_plan_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    item = (
+        db.query(MealPlanItem)
+        .join(MealPlan, MealPlanItem.meal_plan_id == MealPlan.id)
+        .filter(MealPlanItem.id == item_id, MealPlan.user_id == current_user.id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
+
+
+def _get_item_for_user(item_id: int, user_id: int, db: Session) -> MealPlanItem:
+    item = (
+        db.query(MealPlanItem)
+        .join(MealPlan, MealPlanItem.meal_plan_id == MealPlan.id)
+        .filter(MealPlanItem.id == item_id, MealPlan.user_id == user_id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item
+
+
+@router.post("/items/{item_id}/eat")
+def mark_eaten(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    item = _get_item_for_user(item_id, current_user.id, db)
+
+    existing = db.query(EatenPlanItem).filter(EatenPlanItem.plan_item_id == item_id).first()
+    if existing:
+        return _serialize_item(item, eaten=True)
+
+    food_log = FoodLog(
+        user_id=current_user.id,
+        description=item.description or item.meal_name,
+        kcal=item.kcal or 0,
+        protein=item.protein or 0.0,
+        fat=item.fat or 0.0,
+        carbs=item.carbs or 0.0,
+        source_type="manual",
+    )
+    db.add(food_log)
+    db.flush()
+
+    db.add(EatenPlanItem(plan_item_id=item_id, food_log_id=food_log.id))
+    db.commit()
+    return _serialize_item(item, eaten=True)
+
+
+@router.delete("/items/{item_id}/eat")
+def mark_uneaten(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    item = _get_item_for_user(item_id, current_user.id, db)
+
+    eaten = db.query(EatenPlanItem).filter(EatenPlanItem.plan_item_id == item_id).first()
+    if not eaten:
+        return _serialize_item(item, eaten=False)
+
+    if eaten.food_log_id is not None:
+        log = db.query(FoodLog).filter(FoodLog.id == eaten.food_log_id).first()
+        if log:
+            db.delete(log)
+
+    db.delete(eaten)
+    db.commit()
+    return _serialize_item(item, eaten=False)
+
+
+@router.post("/plans/{plan_id}/items")
+def add_plan_item(
+    plan_id: int,
+    body: AddItemRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    plan = db.query(MealPlan).filter(MealPlan.id == plan_id, MealPlan.user_id == current_user.id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    item = MealPlanItem(
+        meal_plan_id=plan_id,
+        day_number=body.day_number,
+        meal_name=body.meal_name,
+        description=body.description,
+        kcal=body.kcal,
+        protein=body.protein,
+        fat=body.fat,
+        carbs=body.carbs,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _serialize_item(item)
 
 
 @router.post("/generate")
