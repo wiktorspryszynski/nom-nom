@@ -29,6 +29,7 @@ async function resizeImage(file: File, maxPx = 1024): Promise<Blob> {
 interface ParsedFood {
   name: string
   description: string
+  serving_size?: string
   kcal: number
   protein: number
   fat: number
@@ -66,6 +67,8 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
   const [preview, setPreview] = useState<string | null>(null)
   const [status, setStatus] = useState<'analyzing' | 'result' | 'error'>('analyzing')
   const [food, setFood] = useState<ParsedFood | null>(null)
+  const [originalFood, setOriginalFood] = useState<ParsedFood | null>(null)
+  const [portion, setPortion] = useState(1.0)
   const [errorMsg, setErrorMsg] = useState('')
   const [saving, setSaving] = useState(false)
   const prevFileRef = useRef<File | null>(null)
@@ -78,6 +81,8 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
     setPreview(url)
     setStatus('analyzing')
     setFood(null)
+    setOriginalFood(null)
+    setPortion(1.0)
     setErrorMsg('')
 
     const token = localStorage.getItem('nom_token')
@@ -102,6 +107,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
       })
       .then((data: ParsedFood) => {
         setFood(data)
+        setOriginalFood(data)
         setStatus('result')
       })
       .catch(err => {
@@ -111,6 +117,19 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
 
     return () => URL.revokeObjectURL(url)
   }, [file])
+
+  const applyPortion = (p: number) => {
+    if (!originalFood) return
+    const clamped = Math.max(0.05, p)
+    setPortion(clamped)
+    setFood(f => f ? {
+      ...f,
+      kcal: Math.round(originalFood.kcal * clamped),
+      protein: Math.round(originalFood.protein * clamped * 10) / 10,
+      fat: Math.round(originalFood.fat * clamped * 10) / 10,
+      carbs: Math.round(originalFood.carbs * clamped * 10) / 10,
+    } : f)
+  }
 
   const handleSave = async () => {
     if (!food) return
@@ -229,6 +248,38 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
                              text-base px-3 py-2.5 outline-none focus:border-lily/50 transition-colors"
                 />
                 <p className="text-xs text-lily/40 mt-1.5 font-semibold">{food.description}</p>
+                {food.serving_size && (
+                  <p className="text-xs text-lily/50 mt-0.5 font-bold">{food.serving_size}</p>
+                )}
+              </div>
+
+              {/* Portion */}
+              <div>
+                <label className="text-[10px] font-extrabold text-lily/40 uppercase tracking-widest">{t('photoLogPortion')}</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  {([0.25, 0.5, 0.75, 1] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => applyPortion(p)}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold border-[2px] transition-colors cursor-pointer
+                        ${Math.abs(portion - p) < 0.01
+                          ? 'bg-lily text-primary border-lily'
+                          : 'bg-transparent text-lily/50 border-lily/20 hover:border-lily/40'}`}
+                    >
+                      {p === 0.25 ? '¼' : p === 0.5 ? '½' : p === 0.75 ? '¾' : '1×'}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    value={portion}
+                    step="0.1"
+                    min="0.05"
+                    onChange={e => applyPortion(parseFloat(e.target.value) || 1)}
+                    className="w-16 text-center font-extrabold text-lily text-sm bg-lily/6 border-[2px] border-lily/20
+                               rounded-xl py-1.5 outline-none focus:border-lily/50 transition-colors"
+                  />
+                  <span className="text-xs font-bold text-lily/40">×</span>
+                </div>
               </div>
 
               {/* Kcal */}

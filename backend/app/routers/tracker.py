@@ -52,8 +52,9 @@ def _build_vision_prompt(language: str) -> str:
     return (
         f"Analyze this food photo. Return ONLY a raw JSON object (no markdown, no code fences) with:\n"
         f'{{"name":"short {name_lang} name (max 4 words)","description":"one {name_lang} sentence describing the dish",'
+        f'"serving_size":"visible portion estimate in {name_lang} (e.g. \'1 plaster\', \'250 g\', \'1 szklanka\', \'2 pieces\')",'
         '"kcal":integer,"protein":float,"fat":float,"carbs":float,"confidence":float 0-1}\n\n'
-        "Estimate a realistic single serving. If this is not a food photo return:\n"
+        "Estimate for the portion actually visible in the photo. If this is not a food photo return:\n"
         '{"error":"Nie rozpoznano jedzenia na zdjęciu"}'
     )
 
