@@ -71,11 +71,18 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
   const [portion, setPortion] = useState(1.0)
   const [errorMsg, setErrorMsg] = useState('')
   const [saving, setSaving] = useState(false)
-  const prevFileRef = useRef<File | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const analyzeKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!file || file === prevFileRef.current) return
-    prevFileRef.current = file
+    if (!file) {
+      analyzeKeyRef.current = null
+      return
+    }
+
+    const analyzeKey = `${file.name}:${file.size}:${file.lastModified}:${lang}`
+    if (analyzeKey === analyzeKeyRef.current) return
+    analyzeKeyRef.current = analyzeKey
 
     const url = URL.createObjectURL(file)
     setPreview(url)
@@ -116,7 +123,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
       })
 
     return () => URL.revokeObjectURL(url)
-  }, [file])
+  }, [file, lang, retryCount])
 
   const applyPortion = (p: number) => {
     if (!originalFood) return
@@ -213,7 +220,10 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
               <div>
                 <p className="text-sm font-bold text-red-500">{errorMsg}</p>
                 <button
-                  onClick={() => { prevFileRef.current = null; if (file) { prevFileRef.current = null; setStatus('analyzing'); } }}
+                  onClick={() => {
+                    analyzeKeyRef.current = null
+                    setRetryCount(c => c + 1)
+                  }}
                   className="flex items-center gap-1 text-xs font-bold text-red-400 mt-2 cursor-pointer"
                 >
                   <RotateCcw size={12} /> {t('photoLogRetry')}
