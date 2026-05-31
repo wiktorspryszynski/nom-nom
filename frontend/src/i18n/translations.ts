@@ -150,6 +150,10 @@ const pl = {
   plannerPreferencesPlaceholder: 'Preferencje: np. bez glutenu, wegetariańskie, kuchnia polska…',
   plannerDays: ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'],
   plannerMeals: ['Śniadanie', 'Obiad', 'Kolacja', 'Przekąska'],
+  plannerPrevWeek: 'Poprzedni tydzień',
+  plannerNextWeek: 'Następny tydzień',
+  plannerGoToToday: 'Wróć do bieżącego tygodnia',
+  plannerBackToToday: 'Dotknij, aby wrócić do dziś',
 
   // ── Measurements ──────────────────────────────────────────────────────────
   measurementsTitle: 'Pomiary',
@@ -453,6 +457,10 @@ const en: Translations = {
   plannerPreferencesPlaceholder: 'Preferences: e.g. gluten-free, vegetarian, Polish cuisine…',
   plannerDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   plannerMeals: ['Breakfast', 'Lunch', 'Dinner', 'Snack'],
+  plannerPrevWeek: 'Previous week',
+  plannerNextWeek: 'Next week',
+  plannerGoToToday: 'Go to current week',
+  plannerBackToToday: 'Tap to return to today',
 
   // ── Measurements ──────────────────────────────────────────────────────────
   measurementsTitle: 'Measurements',

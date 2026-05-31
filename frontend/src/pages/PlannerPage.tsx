@@ -5,7 +5,11 @@ import EntryFormSheet from '../components/EntryFormSheet'
 import { EntryRow } from '../components/EntryRow'
 import { useLanguage } from '../context/LanguageContext'
 import { mealPlanner, tracker, library, type MealPlan, type MealPlanItem, type DailyData, type DailyEntry, type SavedItem, ApiError } from '../lib/api'
-import { NOMNOM_EATING_RAMEN } from '../assets'
+import { NOMNOM_EATING_ICONS } from '../assets'
+
+function pickRandomEatingIcon() {
+  return NOMNOM_EATING_ICONS[Math.floor(Math.random() * NOMNOM_EATING_ICONS.length)]
+}
 
 type Tab = 'plan' | 'saved'
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'
@@ -51,50 +55,89 @@ function mealTypeFromName(mealName: string): MealType {
   return types.find(t => mealNameMatchesSlot(mealName, t)) ?? 'other'
 }
 
-function getSlotCalendarDate(selectedDayIndex: number, referenceDate: Date) {
-  const weekStart = getWeekStart(referenceDate)
+function getDayInWeek(weekStart: Date, dayIndex: number): Date {
   const slotDate = new Date(weekStart)
-  slotDate.setDate(weekStart.getDate() + selectedDayIndex)
+  slotDate.setDate(weekStart.getDate() + dayIndex)
   slotDate.setHours(0, 0, 0, 0)
   return slotDate
 }
 
-function getPlanDayNumber(plan: MealPlan, selectedDayIndex: number): number | null {
+function getPlanDayNumber(plan: MealPlan, weekStart: Date, selectedDayIndex: number): number | null {
   const planStart = parseDateOnly(plan.start_date)
   planStart.setHours(0, 0, 0, 0)
   const planEnd = new Date(planStart)
   planEnd.setDate(planStart.getDate() + plan.days_count - 1)
-  const slotDate = getSlotCalendarDate(selectedDayIndex, planStart)
+  const slotDate = getDayInWeek(weekStart, selectedDayIndex)
   if (slotDate < planStart || slotDate > planEnd) return null
   return Math.round((slotDate.getTime() - planStart.getTime()) / 86_400_000) + 1
 }
 
-function getItemsForSelectedDay(plan: MealPlan, selectedDayIndex: number): MealPlanItem[] {
-  const dayNumber = getPlanDayNumber(plan, selectedDayIndex)
+function getItemsForSelectedDay(plan: MealPlan, weekStart: Date, selectedDayIndex: number): MealPlanItem[] {
+  const dayNumber = getPlanDayNumber(plan, weekStart, selectedDayIndex)
   if (dayNumber == null) return []
   return plan.items.filter(i => i.day_number === dayNumber)
 }
 
-function DaySelector({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
+function DaySelector({
+  selected,
+  onSelect,
+  weekStart,
+  activePlan,
+}: {
+  selected: number
+  onSelect: (i: number) => void
+  weekStart: Date
+  activePlan: MealPlan | null
+}) {
   const { ta } = useLanguage()
   const DAYS = ta('plannerDays')
-  const today = new Date().getDay()
-  const todayIndex = today === 0 ? 6 : today - 1
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-      {DAYS.map((day, i) => {
-        const isToday = i === todayIndex
+    <div className="grid grid-cols-7 gap-1">
+      {DAYS.map((dayLabel, i) => {
+        const date = new Date(weekStart)
+        date.setDate(weekStart.getDate() + i)
+        date.setHours(0, 0, 0, 0)
+        const isToday = date.getTime() === today.getTime()
         const isSelected = i === selected
+        const inPlan = activePlan ? getPlanDayNumber(activePlan, weekStart, i) != null : true
+        const hasMeals = activePlan
+          ? getItemsForSelectedDay(activePlan, weekStart, i).length > 0
+          : false
+
         return (
           <button
-            key={day}
+            key={i}
+            type="button"
             onClick={() => onSelect(i)}
-            className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl shrink-0 transition-colors cursor-pointer ${
-              isSelected ? 'bg-lily text-primary' : isToday ? 'bg-primary/50 text-lily' : 'bg-lily/8 text-lily/50'
+            aria-current={isSelected ? 'date' : undefined}
+            aria-label={dayLabel}
+            className={`relative flex flex-col items-center gap-0.5 py-2 rounded-xl transition-colors cursor-pointer min-w-0 ${
+              isSelected
+                ? 'bg-lily text-primary shadow-sm'
+                : inPlan
+                  ? isToday
+                    ? 'bg-lily/20 text-lily ring-1 ring-lily/50'
+                    : 'bg-lily/10 text-lily/70 hover:bg-lily/15'
+                  : 'bg-transparent text-lily/30 hover:text-lily/50'
             }`}
           >
-            <span className="text-[10px] font-extrabold uppercase tracking-wide">{day}</span>
-            {isToday && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-primary' : 'bg-lily'}`} />}
+            <span className="text-[9px] font-extrabold uppercase tracking-wide leading-none truncate w-full text-center">
+              {dayLabel}
+            </span>
+            <span className={`text-sm font-extrabold leading-none tabular-nums ${isSelected ? 'text-primary' : ''}`}>
+              {date.getDate()}
+            </span>
+            {hasMeals && (
+              <span
+                className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${
+                  isSelected ? 'bg-primary/50' : 'bg-lily/50'
+                }`}
+                aria-hidden
+              />
+            )}
           </button>
         )
       })}
@@ -359,22 +402,31 @@ function GenerateModal({
   )
 }
 
-function weekLabel(startDate: Date) {
+function weekLabel(startDate: Date, locale: string) {
   const end = new Date(startDate)
   end.setDate(startDate.getDate() + 6)
-  const fmt = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'long' })
-  return `${fmt.format(startDate)} - ${fmt.format(end)}`
+  const fmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
+  return `${fmt.format(startDate)} – ${fmt.format(end)}`
+}
+
+function selectedDayLabel(weekStart: Date, dayIndex: number, locale: string) {
+  const date = new Date(weekStart)
+  date.setDate(weekStart.getDate() + dayIndex)
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(date)
 }
 
 export default function PlannerPage() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const locale = lang === 'en' ? 'en-GB' : 'pl-PL'
   const [tab, setTab] = useState<Tab>('plan')
   const [selectedDay, setSelectedDay] = useState(() => {
     const d = new Date().getDay()
     return d === 0 ? 6 : d - 1
   })
+  const [viewWeekStart, setViewWeekStart] = useState(() => getWeekStart(new Date()))
+  const [headerIcon] = useState(pickRandomEatingIcon)
 
-  const [plans, setPlans] = useState<MealPlan[]>([])
+  const [, setPlans] = useState<MealPlan[]>([])
   const [activePlan, setActivePlan] = useState<MealPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -420,15 +472,33 @@ export default function PlannerPage() {
     })()
   }, [fetchPlans, fetchDaily])
 
+  useEffect(() => {
+    if (activePlan) {
+      setViewWeekStart(getWeekStart(parseDateOnly(activePlan.start_date)))
+    }
+  }, [activePlan?.id])
+
+  const shiftViewWeek = (deltaWeeks: number) => {
+    setViewWeekStart(prev => {
+      const next = new Date(prev)
+      next.setDate(prev.getDate() + deltaWeeks * 7)
+      return next
+    })
+  }
+
+  const goToCurrentWeek = () => {
+    setViewWeekStart(getWeekStart(new Date()))
+    const d = new Date().getDay()
+    setSelectedDay(d === 0 ? 6 : d - 1)
+  }
+
+  const isViewingCurrentWeek = viewWeekStart.getTime() === getWeekStart(new Date()).getTime()
+
   const handleGenerate = async (preferences: string) => {
     setGenerating(true)
     setError('')
     try {
-      const baseDate = activePlan
-        ? getWeekStart(parseDateOnly(activePlan.start_date))
-        : getWeekStart(new Date())
-      const planStartDate = new Date(baseDate)
-      planStartDate.setDate(baseDate.getDate() + selectedDay)
+      const planStartDate = getDayInWeek(viewWeekStart, selectedDay)
       const daysRemaining = Math.max(1, 7 - selectedDay)
 
       const plan = await mealPlanner.generate({
@@ -519,43 +589,58 @@ export default function PlannerPage() {
     setShowEntryForm(true)
   }
 
-  const selectedDayItems = activePlan ? getItemsForSelectedDay(activePlan, selectedDay) : []
-  const selectedPlanDayNumber = activePlan ? getPlanDayNumber(activePlan, selectedDay) : null
-  const weekDisplayStart = activePlan
-    ? getWeekStart(parseDateOnly(activePlan.start_date))
-    : getWeekStart(new Date())
+  const selectedDayItems = activePlan ? getItemsForSelectedDay(activePlan, viewWeekStart, selectedDay) : []
+  const selectedPlanDayNumber = activePlan ? getPlanDayNumber(activePlan, viewWeekStart, selectedDay) : null
 
   return (
     <div className="min-h-dvh bg-white">
       <div className="bg-primary px-5 pt-14 pb-6 relative overflow-hidden">
-        <img src={NOMNOM_EATING_RAMEN} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
-        <h1 className="text-2xl font-extrabold text-lily mb-4">{t('plannerTitle')}</h1>
+        <img src={headerIcon} alt="" aria-hidden className="absolute bottom-0 right-2 w-24 pointer-events-none select-none" />
+        <div className="relative z-10 pr-28">
+          <h1 className="text-2xl font-extrabold text-lily mb-4">{t('plannerTitle')}</h1>
 
-        <div className="flex items-center justify-between mb-3">
-          <button
-            disabled={plans.length <= 1}
-            onClick={() => {
-              const idx = plans.indexOf(activePlan!)
-              if (idx < plans.length - 1) setActivePlan(plans[idx + 1])
-            }}
-            className="p-1 text-lily/50 hover:text-lily cursor-pointer disabled:opacity-25"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-sm font-extrabold text-lily">{weekLabel(weekDisplayStart)}</span>
-          <button
-            disabled={plans.length <= 1}
-            onClick={() => {
-              const idx = plans.indexOf(activePlan!)
-              if (idx > 0) setActivePlan(plans[idx - 1])
-            }}
-            className="p-1 text-lily/50 hover:text-lily cursor-pointer disabled:opacity-25"
-          >
-            <ChevronRight size={20} />
-          </button>
+          <div className="flex items-center justify-between mb-1">
+            <button
+              type="button"
+              onClick={() => shiftViewWeek(-1)}
+              className="p-1 text-lily/50 hover:text-lily cursor-pointer"
+              aria-label={t('plannerPrevWeek')}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={goToCurrentWeek}
+              className="text-center min-w-0 flex-1 px-1 cursor-pointer"
+              aria-label={t('plannerGoToToday')}
+            >
+              <p className="text-[10px] font-bold text-lily/50 uppercase tracking-widest">
+                {weekLabel(viewWeekStart, locale)}
+              </p>
+              <p className="text-sm font-extrabold text-lily truncate">
+                {selectedDayLabel(viewWeekStart, selectedDay, locale)}
+              </p>
+              {!isViewingCurrentWeek && (
+                <p className="text-[9px] font-bold text-lily/40 mt-0.5">{t('plannerBackToToday')}</p>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => shiftViewWeek(1)}
+              className="p-1 text-lily/50 hover:text-lily cursor-pointer"
+              aria-label={t('plannerNextWeek')}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <DaySelector
+            selected={selectedDay}
+            onSelect={setSelectedDay}
+            weekStart={viewWeekStart}
+            activePlan={activePlan}
+          />
         </div>
-
-        <DaySelector selected={selectedDay} onSelect={setSelectedDay} />
       </div>
 
       <div className="px-4 pb-28 space-y-4 mt-4">
