@@ -62,7 +62,7 @@ function MacroChip({ label, value, unit, color, onChange }: {
 }
 
 export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [preview, setPreview] = useState<string | null>(null)
   const [status, setStatus] = useState<'analyzing' | 'result' | 'error'>('analyzing')
   const [food, setFood] = useState<ParsedFood | null>(null)
@@ -87,7 +87,7 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
       .then(resizedBlob => {
         const formData = new FormData()
         formData.append('file', resizedBlob, 'photo.jpg')
-        return fetch('/api/tracker/log/photo', {
+        return fetch(`/api/tracker/log/photo?language=${lang}`, {
           method: 'POST',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData,
@@ -239,7 +239,8 @@ export default function PhotoLogSheet({ file, onClose, onSaved }: Props) {
                     type="number"
                     value={food.kcal}
                     onChange={e => setFood(f => f ? { ...f, kcal: parseInt(e.target.value) || 0 } : f)}
-                    className="w-20 text-right font-extrabold text-lily text-xl bg-transparent outline-none"
+                    className="w-24 text-right font-extrabold text-lily text-xl bg-white/60 border-[2px] border-lily/20
+                               rounded-xl px-2 py-1 outline-none focus:border-lily/50 transition-colors"
                   />
                   <span className="text-sm font-bold text-lily/60">kcal</span>
                 </div>

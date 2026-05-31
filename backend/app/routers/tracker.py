@@ -512,6 +512,7 @@ async def log_text(
 @router.post("/log/photo")
 async def log_photo(
     file: UploadFile = File(...),
+    language: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -531,8 +532,9 @@ async def log_photo(
     if media_type not in _ALLOWED_MEDIA_TYPES:
         media_type = "image/jpeg"
 
+    effective_lang = language if language in ("pl", "en") else (current_user.language or "pl")
     b64 = base64.standard_b64encode(contents).decode()
-    result = _call_claude_vision(b64, media_type, language=current_user.language or "pl")
+    result = _call_claude_vision(b64, media_type, language=effective_lang)
 
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
