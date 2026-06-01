@@ -11,6 +11,8 @@ interface LanguageCtx {
 const LanguageContext = createContext<LanguageCtx | null>(null)
 
 function getStored(): Lang {
+  const param = new URLSearchParams(window.location.search).get('lang')
+  if (param === 'en' || param === 'pl') return param
   const v = localStorage.getItem('nomnom-lang')
   return v === 'en' ? 'en' : 'pl'
 }

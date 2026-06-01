@@ -105,7 +105,7 @@ graph TD
 **Profile (`/profile`)**
 - Editable goals: calorie target, weight target, TDEE, protein target, height
 - TDEE and calorie-target calculators (modals)
-- Language toggle — Polish / English (UI `localStorage`; default Polish)
+- 3uage toggle — Polish / English (UI `localStorage`; default Polish)
 - Demo account AI usage meter
 
 **Auth**
